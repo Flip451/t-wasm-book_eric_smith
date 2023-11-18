@@ -1,8 +1,10 @@
 use std::ops::Add;
 use std::ops::Mul;
 
+use rand::Rng;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
+use web_sys::console;
 
 // When the `wee_alloc` feature is enabled, this uses `wee_alloc` as the global
 // allocator.
@@ -41,8 +43,16 @@ pub fn main_js() -> Result<(), JsValue> {
         p3: Point { x: 600.0, y: 600.0 },
     };
 
-    // context.set_fill_style(&"rgb(150,50,0)".into());
-    draw_sierpinski(&context, &triangle, 6);
+    let mut rng = rand::thread_rng();
+    let color = Color {
+        r: rng.gen_range(0..255),
+        g: rng.gen_range(0..255),
+        b: rng.gen_range(0..255),
+    };
+
+    console::log_1(&color.to_string().into());
+
+    draw_sierpinski(&context, &triangle, 6, &color);
 
     Ok(())
 }
@@ -75,28 +85,47 @@ impl Mul<f64> for Point {
     }
 }
 
+struct Color {
+    r: u8,
+    g: u8,
+    b: u8,
+}
+
+impl ToString for Color {
+    fn to_string(&self) -> String {
+        format!("rgb({},{},{})", self.r, self.g, self.b)
+    }
+}
+
 struct Triangle {
     p1: Point,
     p2: Point,
     p3: Point,
 }
 
-fn draw_triangle(context: &web_sys::CanvasRenderingContext2d, triangle: &Triangle) {
+fn draw_triangle(context: &web_sys::CanvasRenderingContext2d, triangle: &Triangle, color: &Color) {
     context.move_to(triangle.p1.x, triangle.p1.y);
+    context.begin_path();
     context.line_to(triangle.p2.x, triangle.p2.y);
     context.line_to(triangle.p3.x, triangle.p3.y);
     context.line_to(triangle.p1.x, triangle.p1.y);
     context.close_path();
     context.stroke();
-    // context.fill();
+    context.set_fill_style(&color.to_string().into());
+    context.fill();
 }
 
-fn draw_sierpinski(context: &web_sys::CanvasRenderingContext2d, triangle: &Triangle, depth: usize) {
+fn draw_sierpinski(
+    context: &web_sys::CanvasRenderingContext2d,
+    triangle: &Triangle,
+    depth: usize,
+    color: &Color,
+) {
     if depth <= 0 {
         return;
     }
 
-    draw_triangle(context, triangle);
+    draw_triangle(context, triangle, &color);
 
     let center_p1_p2 = (triangle.p1 + triangle.p2) * 0.5;
     let center_p2_p3 = (triangle.p2 + triangle.p3) * 0.5;
@@ -118,7 +147,16 @@ fn draw_sierpinski(context: &web_sys::CanvasRenderingContext2d, triangle: &Trian
         p3: triangle.p3,
     };
 
-    draw_sierpinski(context, &new_triangle_1, depth - 1);
-    draw_sierpinski(context, &new_triangle_2, depth - 1);
-    draw_sierpinski(context, &new_triangle_3, depth - 1);
+    let mut rng = rand::thread_rng();
+    let color = Color {
+        r: rng.gen_range(0..255),
+        g: rng.gen_range(0..255),
+        b: rng.gen_range(0..255),
+    };
+
+    console::log_1(&color.to_string().into());
+
+    draw_sierpinski(context, &new_triangle_1, depth - 1, &color);
+    draw_sierpinski(context, &new_triangle_2, depth - 1, &color);
+    draw_sierpinski(context, &new_triangle_3, depth - 1, &color);
 }
