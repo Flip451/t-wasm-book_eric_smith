@@ -1,3 +1,6 @@
+use std::rc::Rc;
+use std::sync::Mutex;
+
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
@@ -37,24 +40,40 @@ pub fn main_js() -> Result<(), JsValue> {
 
     wasm_bindgen_futures::spawn_local(async move {
         // 送受信機の作成
-        let (success_tx, success_rx) = futures::channel::oneshot::channel::<()>();
+        let (success_tx, success_rx) = futures::channel::oneshot::channel::<Result<(), JsValue>>();
+        let success_tx = Rc::new(Mutex::new(Some(success_tx)));
+        let error_tx = success_tx.clone();
 
-        // ImageHtmlElement の作成と画像の読み込み開始
+        // ImageHtmlElement の作成
         let image = web_sys::HtmlImageElement::new().unwrap();
-        image.set_src("Idle (1).png");
 
         // 画像の読み込みが完了したことを通知するコールバック関数の作成
-        let callback = Closure::once(|| {
-            success_tx.send(()).unwrap();
+        let callback = Closure::once(move || {
+            if let Some(success_tx) = success_tx.lock().ok().and_then(|mut tx| tx.take()) {
+                success_tx.send(Ok(()));
+            }
         });
         // 画像の読み込みが完了したら上記のコールバック関数を呼び出すように設定
         image.set_onload(Some(callback.as_ref().unchecked_ref()));
 
+        // 画像の読み込みが失敗したことを通知するコールバック関数の作成
+        let callback_error = Closure::once(move |err| {
+            if let Some(error_tx) = error_tx.lock().ok().and_then(|mut tx| tx.take()) {
+                error_tx.send(Err(err));
+            }
+        });
+        // 画像の読み込みが失敗したら上記のコールバック関数を呼び出すように設定
+        image.set_onerror(Some(callback_error.as_ref().unchecked_ref()));
+
+        // 画像の読み込み開始
+        image.set_src("Idle (1).png");
+
         // 画像の読み込み完了を待機
-        success_rx.await.unwrap();
+        success_rx.await;
 
         // 画像の描画
-        context.draw_image_with_html_image_element(&image, 0., 0.).unwrap();
+        context
+            .draw_image_with_html_image_element(&image, 0., 0.);
 
         sierpinski::draw_sierpinski(
             &context,
