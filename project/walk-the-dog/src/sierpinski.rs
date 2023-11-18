@@ -38,6 +38,17 @@ pub(super) struct Color {
     pub(super) b: u8,
 }
 
+impl Color {
+    pub(super) fn random_color() -> Self {
+        let mut rng = rand::thread_rng();
+        Self {
+            r: rng.gen_range(0..255),
+            g: rng.gen_range(0..255),
+            b: rng.gen_range(0..255),
+        }
+    }
+}
+
 impl ToString for Color {
     fn to_string(&self) -> String {
         format!("rgb({},{},{})", self.r, self.g, self.b)
@@ -94,12 +105,7 @@ pub(super) fn draw_sierpinski(
         p3: triangle.p3,
     };
 
-    let mut rng = rand::thread_rng();
-    let color = Color {
-        r: rng.gen_range(0..255),
-        g: rng.gen_range(0..255),
-        b: rng.gen_range(0..255),
-    };
+    let color = Color::random_color();
 
     console::log_1(&color.to_string().into());
 

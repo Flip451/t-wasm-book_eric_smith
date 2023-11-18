@@ -1,4 +1,3 @@
-use rand::Rng;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys::console;
@@ -43,12 +42,7 @@ pub fn main_js() -> Result<(), JsValue> {
         p3: Point { x: 600.0, y: 600.0 },
     };
 
-    let mut rng = rand::thread_rng();
-    let color = Color {
-        r: rng.gen_range(0..255),
-        g: rng.gen_range(0..255),
-        b: rng.gen_range(0..255),
-    };
+    let color = Color::random_color();
 
     console::log_1(&color.to_string().into());
 
