@@ -84,21 +84,35 @@ pub fn main_js() -> Result<(), JsValue> {
         // 画像の読み込み完了を待機
         success_rx.await;
 
-        // シートの中から指定の画像（Run (1).png）の位置を取得
-        let sprite = sheet.frames.get("Run (1).png").expect("Cell not found");
+        // 定期実行するコールバック関数の作成
+        let interval_callback = Closure::wrap(Box::new(move || {
+            context.clear_rect(0., 0., 600., 600.);
 
-        // キャンバスに指定の画像を描画
-        context.draw_image_with_html_image_element_and_sw_and_sh_and_dx_and_dy_and_dw_and_dh(
-            &image,
-            sprite.frame.x as f64,
-            sprite.frame.y as f64,
-            sprite.frame.w as f64,
-            sprite.frame.h as f64,
-            300.,
-            300.,
-            sprite.frame.w as f64,
-            sprite.frame.h as f64,
+            // シートの中から指定の画像（Run (1).png）の位置を取得
+            let sprite = sheet.frames.get("Run (1).png").expect("Cell not found");
+
+            // キャンバスに指定の画像を描画
+            context.draw_image_with_html_image_element_and_sw_and_sh_and_dx_and_dy_and_dw_and_dh(
+                &image,
+                sprite.frame.x as f64,
+                sprite.frame.y as f64,
+                sprite.frame.w as f64,
+                sprite.frame.h as f64,
+                300.,
+                300.,
+                sprite.frame.w as f64,
+                sprite.frame.h as f64,
+            );
+        }) as Box<dyn FnMut()>);
+
+        // 毎秒 20 フレームで実行するように設定
+        window.set_interval_with_callback_and_timeout_and_arguments_0(
+            interval_callback.as_ref().unchecked_ref(),
+            50,
         );
+
+        // コールバック関数の解放
+        interval_callback.forget();
     });
 
     Ok(())
