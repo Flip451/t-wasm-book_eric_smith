@@ -2,7 +2,7 @@ use std::ops::Add;
 use std::ops::Mul;
 
 use rand::Rng;
-use web_sys::console;
+// use web_sys::console;
 
 #[derive(Clone, Copy)]
 pub(super) struct Point {
@@ -107,7 +107,7 @@ pub(super) fn draw_sierpinski(
 
     let color = Color::random_color();
 
-    console::log_1(&color.to_string().into());
+    // console::log_1(&color.to_string().into());
 
     draw_sierpinski(context, &new_triangle_1, depth - 1, &color);
     draw_sierpinski(context, &new_triangle_2, depth - 1, &color);
