@@ -1,6 +1,5 @@
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
-use web_sys::console;
 
 mod sierpinski;
 use sierpinski::*;
@@ -36,17 +35,38 @@ pub fn main_js() -> Result<(), JsValue> {
         .unwrap()
         .dyn_into::<web_sys::CanvasRenderingContext2d>()?;
 
-    let triangle = Triangle {
-        p1: Point { x: 300.0, y: 0. },
-        p2: Point { x: 0., y: 600.0 },
-        p3: Point { x: 600.0, y: 600.0 },
-    };
+    wasm_bindgen_futures::spawn_local(async move {
+        // 送受信機の作成
+        let (success_tx, success_rx) = futures::channel::oneshot::channel::<()>();
 
-    let color = Color::random_color();
+        // ImageHtmlElement の作成と画像の読み込み開始
+        let image = web_sys::HtmlImageElement::new().unwrap();
+        image.set_src("Idle (1).png");
 
-    console::log_1(&color.to_string().into());
+        // 画像の読み込みが完了したことを通知するコールバック関数の作成
+        let callback = Closure::once(|| {
+            success_tx.send(()).unwrap();
+        });
+        // 画像の読み込みが完了したら上記のコールバック関数を呼び出すように設定
+        image.set_onload(Some(callback.as_ref().unchecked_ref()));
 
-    sierpinski::draw_sierpinski(&context, &triangle, 6, &color);
+        // 画像の読み込み完了を待機
+        success_rx.await.unwrap();
+
+        // 画像の描画
+        context.draw_image_with_html_image_element(&image, 0., 0.).unwrap();
+
+        sierpinski::draw_sierpinski(
+            &context,
+            &Triangle {
+                p1: Point { x: 300.0, y: 0. },
+                p2: Point { x: 0., y: 600.0 },
+                p3: Point { x: 600.0, y: 600.0 },
+            },
+            6,
+            &Color::random_color(),
+        );
+    });
 
     Ok(())
 }
