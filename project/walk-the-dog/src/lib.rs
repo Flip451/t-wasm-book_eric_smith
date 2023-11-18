@@ -1,6 +1,9 @@
+use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::Mutex;
 
+use gloo_utils::format::JsValueSerdeExt;
+use serde::Deserialize;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
@@ -85,7 +88,14 @@ pub fn main_js() -> Result<(), JsValue> {
             &Color::random_color(),
         );
 
-        let json = fetch_json("rhb.json").await.unwrap();
+        let json = fetch_json("rhb.json").await.expect("Could not fetch rhb.json");
+
+        // json を Sheet 型に変換
+        // この際、JsValue 型の json を serde を用いてデシリアライズ
+        // この部分の実装は
+        // <https://rustwasm.github.io/wasm-bindgen/reference/arbitrary-data-with-serde.html#an-alternative-approach---using-json>
+        // を参考にした
+        let sheet: Sheet = json.into_serde().expect("Could not parse rhb.json");
     });
 
     Ok(())
@@ -106,4 +116,22 @@ async fn fetch_json(json_path: &str) -> Result<JsValue, JsValue> {
     // js の Response.json() は Promise を返すので、
     // JsFuture::from を使って Future に変換する
     wasm_bindgen_futures::JsFuture::from(resp.json()?).await
+}
+
+#[derive(Deserialize)]
+struct Sheet {
+    frames: HashMap<String, Cell>,
+}
+
+#[derive(Deserialize)]
+struct Rect {
+    x: u16,
+    y: u16,
+    w: u16,
+    h: u16,
+}
+
+#[derive(Deserialize)]
+struct Cell {
+    frame: Rect,
 }

@@ -33,6 +33,7 @@ wee_alloc = { version = "0.4.2", optional = true }
 futures = "0.3.29"
 wasm-bindgen-futures = "0.4.38"
 serde = { version = "1.0.192", features = ["derive"] }
+gloo-utils = { version = "0.2.0", features = ["serde"] }
 
 # The `web-sys` crate allows you to interact with the various browser APIs,
 # like the DOM.
