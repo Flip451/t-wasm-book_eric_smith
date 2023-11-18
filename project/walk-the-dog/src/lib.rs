@@ -88,7 +88,9 @@ pub fn main_js() -> Result<(), JsValue> {
             &Color::random_color(),
         );
 
-        let json = fetch_json("rhb.json").await.expect("Could not fetch rhb.json");
+        let json = fetch_json("rhb.json")
+            .await
+            .expect("Could not fetch rhb.json");
 
         // json を Sheet 型に変換
         // この際、JsValue 型の json を serde を用いてデシリアライズ
@@ -96,6 +98,54 @@ pub fn main_js() -> Result<(), JsValue> {
         // <https://rustwasm.github.io/wasm-bindgen/reference/arbitrary-data-with-serde.html#an-alternative-approach---using-json>
         // を参考にした
         let sheet: Sheet = json.into_serde().expect("Could not parse rhb.json");
+
+        // 送受信機の作成
+        let (success_tx, success_rx) = futures::channel::oneshot::channel::<Result<(), JsValue>>();
+        let success_tx = Rc::new(Mutex::new(Some(success_tx)));
+        let error_tx = success_tx.clone();
+
+        // ImageHtmlElement の作成
+        let image = web_sys::HtmlImageElement::new().unwrap();
+
+        // 画像の読み込みが完了したことを通知するコールバック関数の作成
+        let callback = Closure::once(move || {
+            if let Some(success_tx) = success_tx.lock().ok().and_then(|mut tx| tx.take()) {
+                success_tx.send(Ok(()));
+            }
+        });
+        // 画像の読み込みが完了したら上記のコールバック関数を呼び出すように設定
+        image.set_onload(Some(callback.as_ref().unchecked_ref()));
+
+        // 画像の読み込みが失敗したことを通知するコールバック関数の作成
+        let callback_error = Closure::once(move |err| {
+            if let Some(error_tx) = error_tx.lock().ok().and_then(|mut tx| tx.take()) {
+                error_tx.send(Err(err));
+            }
+        });
+        // 画像の読み込みが失敗したら上記のコールバック関数を呼び出すように設定
+        image.set_onerror(Some(callback_error.as_ref().unchecked_ref()));
+
+        // 画像の読み込み開始
+        image.set_src("rhb.png");
+
+        // 画像の読み込み完了を待機
+        success_rx.await;
+
+        // シートの中から指定の画像（Run (1).png）の位置を取得
+        let sprite = sheet.frames.get("Run (1).png").expect("Cell not found");
+
+        // キャンバスに指定の画像を描画
+        context.draw_image_with_html_image_element_and_sw_and_sh_and_dx_and_dy_and_dw_and_dh(
+            &image,
+            sprite.frame.x as f64,
+            sprite.frame.y as f64,
+            sprite.frame.w as f64,
+            sprite.frame.h as f64,
+            300.,
+            300.,
+            sprite.frame.w as f64,
+            sprite.frame.h as f64,
+        );
     });
 
     Ok(())
