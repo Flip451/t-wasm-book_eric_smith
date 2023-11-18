@@ -72,8 +72,7 @@ pub fn main_js() -> Result<(), JsValue> {
         success_rx.await;
 
         // 画像の描画
-        context
-            .draw_image_with_html_image_element(&image, 0., 0.);
+        context.draw_image_with_html_image_element(&image, 0., 0.);
 
         sierpinski::draw_sierpinski(
             &context,
@@ -85,7 +84,26 @@ pub fn main_js() -> Result<(), JsValue> {
             6,
             &Color::random_color(),
         );
+
+        let json = fetch_json("rhb.json").await.unwrap();
     });
 
     Ok(())
+}
+
+async fn fetch_json(json_path: &str) -> Result<JsValue, JsValue> {
+    let window = web_sys::window().expect("no global `window` exists");
+
+    // js の window.fetch を呼び出す
+    // js の window.fetch は Promise を返すので、
+    // JsFuture::from を使って Future に変換する (Furure は Rust における非同期処理を表す)
+    let resp_value = wasm_bindgen_futures::JsFuture::from(window.fetch_with_str(json_path)).await?;
+
+    // レスポンス(JsValue) を Response オブジェクトにキャスト
+    let resp: web_sys::Response = resp_value.dyn_into()?;
+
+    // js の Response.json() を呼び出す
+    // js の Response.json() は Promise を返すので、
+    // JsFuture::from を使って Future に変換する
+    wasm_bindgen_futures::JsFuture::from(resp.json()?).await
 }
