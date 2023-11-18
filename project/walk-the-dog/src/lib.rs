@@ -84,12 +84,18 @@ pub fn main_js() -> Result<(), JsValue> {
         // 画像の読み込み完了を待機
         success_rx.await;
 
+        let mut frame = -1;
+
         // 定期実行するコールバック関数の作成
         let interval_callback = Closure::wrap(Box::new(move || {
-            context.clear_rect(0., 0., 600., 600.);
+            // フレームカウントを 0 - 7 の間でループ
+            frame = (frame + 1) % 8;
+            let frame_name = format!("Run ({}).png", frame + 1);
 
-            // シートの中から指定の画像（Run (1).png）の位置を取得
-            let sprite = sheet.frames.get("Run (1).png").expect("Cell not found");
+            // シートの中から指定の画像（Run (*).png）の位置を取得
+            let sprite = sheet.frames.get(&frame_name).expect("Cell not found");
+
+            context.clear_rect(0., 0., 600., 600.);
 
             // キャンバスに指定の画像を描画
             context.draw_image_with_html_image_element_and_sw_and_sh_and_dx_and_dy_and_dw_and_dh(
