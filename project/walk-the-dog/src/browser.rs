@@ -84,3 +84,9 @@ pub fn new_image() -> Result<HtmlImageElement> {
         .map_err(|js_value| anyhow!("Error creating HTMLImageElement {:#?}", js_value))
 }
 
+pub fn closure_once<F, A, R>(fn_once: F) -> Closure<F::FnMut>
+where
+    F: 'static + WasmClosureFnOnce<A, R>,
+{
+    Closure::once(fn_once)
+}

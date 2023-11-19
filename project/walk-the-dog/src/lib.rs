@@ -52,7 +52,7 @@ pub fn main_js() -> Result<(), JsValue> {
         let image = browser::new_image().expect("Could not create image");
 
         // 画像の読み込みが完了したことを通知するコールバック関数の作成
-        let callback = Closure::once(move || {
+        let callback = browser::closure_once(move || {
             if let Some(success_tx) = success_tx.lock().ok().and_then(|mut tx| tx.take()) {
                 success_tx.send(Ok(()));
             }
@@ -61,7 +61,7 @@ pub fn main_js() -> Result<(), JsValue> {
         image.set_onload(Some(callback.as_ref().unchecked_ref()));
 
         // 画像の読み込みが失敗したことを通知するコールバック関数の作成
-        let callback_error = Closure::once(move |err| {
+        let callback_error = browser::closure_once(move |err| {
             if let Some(error_tx) = error_tx.lock().ok().and_then(|mut tx| tx.take()) {
                 error_tx.send(Err(err));
             }
