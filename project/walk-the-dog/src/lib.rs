@@ -28,14 +28,8 @@ pub fn main_js() -> Result<(), JsValue> {
     #[cfg(debug_assertions)]
     console_error_panic_hook::set_once();
 
-    // canvas要素の取得
-    let canvas = browser::canvas().expect("canvas not found");
-
     // コンテキストの取得
-    let context = canvas
-        .get_context("2d")?
-        .unwrap()
-        .dyn_into::<web_sys::CanvasRenderingContext2d>()?;
+    let canvas_context = browser::context().expect("Getting canvas context failed");
 
     wasm_bindgen_futures::spawn_local(async move {
         let json = fetch_json("rhb.json")
@@ -92,10 +86,10 @@ pub fn main_js() -> Result<(), JsValue> {
             // シートの中から指定の画像（Run (*).png）の位置を取得
             let sprite = sheet.frames.get(&frame_name).expect("Cell not found");
 
-            context.clear_rect(0., 0., 600., 600.);
+            canvas_context.clear_rect(0., 0., 600., 600.);
 
             // キャンバスに指定の画像を描画
-            context.draw_image_with_html_image_element_and_sw_and_sh_and_dx_and_dy_and_dw_and_dh(
+            canvas_context.draw_image_with_html_image_element_and_sw_and_sh_and_dx_and_dy_and_dw_and_dh(
                 &image,
                 sprite.frame.x as f64,
                 sprite.frame.y as f64,
