@@ -49,7 +49,7 @@ pub fn main_js() -> Result<(), JsValue> {
         let error_tx = success_tx.clone();
 
         // ImageHtmlElement の作成
-        let image = web_sys::HtmlImageElement::new().unwrap();
+        let image = browser::new_image().expect("Could not create image");
 
         // 画像の読み込みが完了したことを通知するコールバック関数の作成
         let callback = Closure::once(move || {
