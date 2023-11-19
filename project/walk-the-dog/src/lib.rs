@@ -9,6 +9,9 @@ use wasm_bindgen::JsCast;
 
 mod sierpinski;
 
+#[macro_use]
+mod browser;
+
 // When the `wee_alloc` feature is enabled, this uses `wee_alloc` as the global
 // allocator.
 //
@@ -25,23 +28,11 @@ pub fn main_js() -> Result<(), JsValue> {
     #[cfg(debug_assertions)]
     console_error_panic_hook::set_once();
 
-    // windowオブジェクトの取得
-    let window = web_sys::window().expect("no global `window` exists");
-    // documentオブジェクトの取得
-    let document = window.document().expect("should have a document on window");
-    // canvas要素の取得 (Element型)
-    let canvas = document.get_element_by_id("canvas").unwrap();
-    // Element 型の canvas を HtmlCanvasElement にキャスト
-    let canvas: web_sys::HtmlCanvasElement = canvas.dyn_into::<web_sys::HtmlCanvasElement>()?;
-
     // コンテキストの取得
-    let context = canvas
-        .get_context("2d")?
-        .unwrap()
-        .dyn_into::<web_sys::CanvasRenderingContext2d>()?;
+    let canvas_context = browser::context().expect("Getting canvas context failed");
 
-    wasm_bindgen_futures::spawn_local(async move {
-        let json = fetch_json("rhb.json")
+    browser::spawn_local(async move {
+        let json = browser::fetch_json("rhb.json")
             .await
             .expect("Could not fetch rhb.json");
 
@@ -95,10 +86,10 @@ pub fn main_js() -> Result<(), JsValue> {
             // シートの中から指定の画像（Run (*).png）の位置を取得
             let sprite = sheet.frames.get(&frame_name).expect("Cell not found");
 
-            context.clear_rect(0., 0., 600., 600.);
+            canvas_context.clear_rect(0., 0., 600., 600.);
 
             // キャンバスに指定の画像を描画
-            context.draw_image_with_html_image_element_and_sw_and_sh_and_dx_and_dy_and_dw_and_dh(
+            canvas_context.draw_image_with_html_image_element_and_sw_and_sh_and_dx_and_dy_and_dw_and_dh(
                 &image,
                 sprite.frame.x as f64,
                 sprite.frame.y as f64,
@@ -112,7 +103,7 @@ pub fn main_js() -> Result<(), JsValue> {
         }) as Box<dyn FnMut()>);
 
         // 毎秒 20 フレームで実行するように設定
-        window.set_interval_with_callback_and_timeout_and_arguments_0(
+        browser::window().unwrap().set_interval_with_callback_and_timeout_and_arguments_0(
             interval_callback.as_ref().unchecked_ref(),
             50,
         );
@@ -122,23 +113,6 @@ pub fn main_js() -> Result<(), JsValue> {
     });
 
     Ok(())
-}
-
-async fn fetch_json(json_path: &str) -> Result<JsValue, JsValue> {
-    let window = web_sys::window().expect("no global `window` exists");
-
-    // js の window.fetch を呼び出す
-    // js の window.fetch は Promise を返すので、
-    // JsFuture::from を使って Future に変換する (Furure は Rust における非同期処理を表す)
-    let resp_value = wasm_bindgen_futures::JsFuture::from(window.fetch_with_str(json_path)).await?;
-
-    // レスポンス(JsValue) を Response オブジェクトにキャスト
-    let resp: web_sys::Response = resp_value.dyn_into()?;
-
-    // js の Response.json() を呼び出す
-    // js の Response.json() は Promise を返すので、
-    // JsFuture::from を使って Future に変換する
-    wasm_bindgen_futures::JsFuture::from(resp.json()?).await
 }
 
 #[derive(Deserialize)]
