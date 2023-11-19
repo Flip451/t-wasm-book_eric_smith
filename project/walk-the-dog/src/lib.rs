@@ -28,10 +28,8 @@ pub fn main_js() -> Result<(), JsValue> {
     #[cfg(debug_assertions)]
     console_error_panic_hook::set_once();
 
-    // windowオブジェクトの取得
-    let window = web_sys::window().expect("no global `window` exists");
     // documentオブジェクトの取得
-    let document = window.document().expect("should have a document on window");
+    let document = browser::document().expect("document not found");
     // canvas要素の取得 (Element型)
     let canvas = document.get_element_by_id("canvas").unwrap();
     // Element 型の canvas を HtmlCanvasElement にキャスト
@@ -115,7 +113,7 @@ pub fn main_js() -> Result<(), JsValue> {
         }) as Box<dyn FnMut()>);
 
         // 毎秒 20 フレームで実行するように設定
-        window.set_interval_with_callback_and_timeout_and_arguments_0(
+        browser::window().unwrap().set_interval_with_callback_and_timeout_and_arguments_0(
             interval_callback.as_ref().unchecked_ref(),
             50,
         );
