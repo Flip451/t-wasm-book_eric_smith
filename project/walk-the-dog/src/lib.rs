@@ -1,7 +1,10 @@
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
-use std::sync::Mutex;
 
+use browser::create_raf_closure;
+use browser::request_animation_frame;
+use browser::LoopClosure;
 use gloo_utils::format::JsValueSerdeExt;
 use serde::Deserialize;
 use wasm_bindgen::prelude::*;
@@ -49,9 +52,30 @@ pub fn main_js() -> Result<(), JsValue> {
             .await
             .expect("Could not load rhb.png");
 
-        let mut frame = -1;
+        // js における以下のコードを模したもの
+        //   (なお requestAnimationFrameは渡した関数をブラウザの表示を邪魔しないタイミングで処理されるようにする関数)
+        //   <https://rustwasm.github.io/docs/wasm-bindgen/examples/request-animation-frame.html> を参照せよ
+        //
+        // function animate(now) {
+        //     /* ここに処理を記述 */
+        //     requestAnimationFrame(animate);
+        // }
+        //
+        // requestAnimationFrame(animate);
+        //
+        let f: Rc<RefCell<Option<LoopClosure>>> = Rc::new(RefCell::new(None));
+        let g = f.clone();
+
+        let animate = Some(create_raf_closure(move |perf: f64| {
+            /* ここに処理を記述 */
+            request_animation_frame(f.borrow().as_ref().unwrap()).unwrap();
+        }));
+
+        *g.borrow_mut() = animate;
+        request_animation_frame(g.borrow().as_ref().unwrap()).unwrap();
 
         // 定期実行するコールバック関数の作成
+        let mut frame = -1;
         let interval_callback = Closure::wrap(Box::new(move || {
             // フレームカウントを 0 - 7 の間でループ
             frame = (frame + 1) % 8;
@@ -63,24 +87,27 @@ pub fn main_js() -> Result<(), JsValue> {
             canvas_context.clear_rect(0., 0., 600., 600.);
 
             // キャンバスに指定の画像を描画
-            canvas_context.draw_image_with_html_image_element_and_sw_and_sh_and_dx_and_dy_and_dw_and_dh(
-                &image,
-                sprite.frame.x as f64,
-                sprite.frame.y as f64,
-                sprite.frame.w as f64,
-                sprite.frame.h as f64,
-                300.,
-                300.,
-                sprite.frame.w as f64,
-                sprite.frame.h as f64,
-            );
+            canvas_context
+                .draw_image_with_html_image_element_and_sw_and_sh_and_dx_and_dy_and_dw_and_dh(
+                    &image,
+                    sprite.frame.x as f64,
+                    sprite.frame.y as f64,
+                    sprite.frame.w as f64,
+                    sprite.frame.h as f64,
+                    300.,
+                    300.,
+                    sprite.frame.w as f64,
+                    sprite.frame.h as f64,
+                );
         }) as Box<dyn FnMut()>);
 
         // 毎秒 20 フレームで実行するように設定
-        browser::window().unwrap().set_interval_with_callback_and_timeout_and_arguments_0(
-            interval_callback.as_ref().unchecked_ref(),
-            50,
-        );
+        browser::window()
+            .unwrap()
+            .set_interval_with_callback_and_timeout_and_arguments_0(
+                interval_callback.as_ref().unchecked_ref(),
+                50,
+            );
 
         // コールバック関数の解放
         interval_callback.forget();
