@@ -31,7 +31,7 @@ pub fn main_js() -> Result<(), JsValue> {
     // コンテキストの取得
     let canvas_context = browser::context().expect("Getting canvas context failed");
 
-    wasm_bindgen_futures::spawn_local(async move {
+    browser::spawn_local(async move {
         let json = fetch_json("rhb.json")
             .await
             .expect("Could not fetch rhb.json");
