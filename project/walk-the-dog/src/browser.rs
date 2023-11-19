@@ -1,5 +1,6 @@
 use anyhow::{anyhow, Result};
-use web_sys::{Window, Document};
+use wasm_bindgen::JsCast;
+use web_sys::{Document, HtmlCanvasElement, Window};
 
 macro_rules! log {
     ($($t:tt)*) => {
@@ -12,5 +13,15 @@ pub fn window() -> Result<Window> {
 }
 
 pub fn document() -> Result<Document> {
-    window()?.document().ok_or(anyhow!("should have a document on window"))
+    window()?
+        .document()
+        .ok_or(anyhow!("should have a document on window"))
+}
+
+pub fn canvas() -> Result<HtmlCanvasElement> {
+    document()?
+        .get_element_by_id("canvas")
+        .ok_or(anyhow!("No canvas element found with ID 'canvas'"))?
+        .dyn_into::<HtmlCanvasElement>()
+        .map_err(|element| anyhow!("Error converting {:#?} to HtmlCanvasElement", element))
 }

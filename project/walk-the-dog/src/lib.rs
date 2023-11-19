@@ -28,12 +28,8 @@ pub fn main_js() -> Result<(), JsValue> {
     #[cfg(debug_assertions)]
     console_error_panic_hook::set_once();
 
-    // documentオブジェクトの取得
-    let document = browser::document().expect("document not found");
-    // canvas要素の取得 (Element型)
-    let canvas = document.get_element_by_id("canvas").unwrap();
-    // Element 型の canvas を HtmlCanvasElement にキャスト
-    let canvas: web_sys::HtmlCanvasElement = canvas.dyn_into::<web_sys::HtmlCanvasElement>()?;
+    // canvas要素の取得
+    let canvas = browser::canvas().expect("canvas not found");
 
     // コンテキストの取得
     let context = canvas
