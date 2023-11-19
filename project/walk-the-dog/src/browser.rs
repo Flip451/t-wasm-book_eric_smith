@@ -1,8 +1,10 @@
 use anyhow::{anyhow, Result};
 use futures::Future;
-use wasm_bindgen::{JsCast, JsValue};
+use wasm_bindgen::{JsCast, JsValue, closure::{Closure, WasmClosureFnOnce}};
 use wasm_bindgen_futures::JsFuture;
-use web_sys::{CanvasRenderingContext2d, Document, HtmlCanvasElement, Response, Window};
+use web_sys::{
+    CanvasRenderingContext2d, Document, HtmlCanvasElement, HtmlImageElement, Response, Window,
+};
 
 macro_rules! log {
     ($($t:tt)*) => {
@@ -70,8 +72,21 @@ pub async fn fetch_json(json_path: &str) -> Result<JsValue> {
     // js の Response.json() は Promise を返すので、
     // JsFuture::from を使って Future に変換する
     JsFuture::from(
-        resp.json().map_err(|js_value| anyhow!("Error getting json from response {:#?}", js_value))?,
+        resp.json()
+            .map_err(|js_value| anyhow!("Error getting json from response {:#?}", js_value))?,
     )
-        .await
-        .map_err(|js_value| anyhow!("Error getting json from response {:#?}", js_value))
+    .await
+    .map_err(|js_value| anyhow!("Error getting json from response {:#?}", js_value))
+}
+
+pub fn new_image() -> Result<HtmlImageElement> {
+    HtmlImageElement::new()
+        .map_err(|js_value| anyhow!("Error creating HTMLImageElement {:#?}", js_value))
+}
+
+pub fn closure_once<F, A, R>(fn_once: F) -> Closure<F::FnMut>
+where
+    F: 'static + WasmClosureFnOnce<A, R>,
+{
+    Closure::once(fn_once)
 }
