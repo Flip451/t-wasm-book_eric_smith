@@ -12,6 +12,8 @@ mod sierpinski;
 #[macro_use]
 mod browser;
 
+mod engine;
+
 // When the `wee_alloc` feature is enabled, this uses `wee_alloc` as the global
 // allocator.
 //
@@ -43,37 +45,9 @@ pub fn main_js() -> Result<(), JsValue> {
         // を参考にした
         let sheet: Sheet = json.into_serde().expect("Could not parse rhb.json");
 
-        // 送受信機の作成
-        let (success_tx, success_rx) = futures::channel::oneshot::channel::<Result<(), JsValue>>();
-        let success_tx = Rc::new(Mutex::new(Some(success_tx)));
-        let error_tx = success_tx.clone();
-
-        // ImageHtmlElement の作成
-        let image = browser::new_image().expect("Could not create image");
-
-        // 画像の読み込みが完了したことを通知するコールバック関数の作成
-        let callback = browser::closure_once(move || {
-            if let Some(success_tx) = success_tx.lock().ok().and_then(|mut tx| tx.take()) {
-                success_tx.send(Ok(()));
-            }
-        });
-        // 画像の読み込みが完了したら上記のコールバック関数を呼び出すように設定
-        image.set_onload(Some(callback.as_ref().unchecked_ref()));
-
-        // 画像の読み込みが失敗したことを通知するコールバック関数の作成
-        let callback_error = browser::closure_once(move |err| {
-            if let Some(error_tx) = error_tx.lock().ok().and_then(|mut tx| tx.take()) {
-                error_tx.send(Err(err));
-            }
-        });
-        // 画像の読み込みが失敗したら上記のコールバック関数を呼び出すように設定
-        image.set_onerror(Some(callback_error.as_ref().unchecked_ref()));
-
-        // 画像の読み込み開始
-        image.set_src("rhb.png");
-
-        // 画像の読み込み完了を待機
-        success_rx.await;
+        let image = engine::load_image("rhb.png")
+            .await
+            .expect("Could not load rhb.png");
 
         let mut frame = -1;
 
