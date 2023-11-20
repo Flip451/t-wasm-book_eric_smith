@@ -33,11 +33,11 @@ pub struct WalkTheDog {
     image: Option<HtmlImageElement>,
     sheet: Option<Sheet>,
     frame: u8,
-    position: Position,
+    position: Point,
 }
 
 #[derive(Clone, Copy)]
-struct Position {
+struct Point {
     x: f32,
     y: f32,
 }
@@ -48,7 +48,7 @@ impl WalkTheDog {
             image: None,
             sheet: None,
             frame: 0,
-            position: Position { x: 300., y: 300. },
+            position: Point { x: 300., y: 300. },
         }
     }
 }
@@ -75,9 +75,27 @@ impl Game for WalkTheDog {
         }))
     }
 
-    fn update(&mut self, _keystate: &engine::KeyState) {
+    fn update(&mut self, keystate: &engine::KeyState) {
         // rhb の動作が一巡するのには 24 フレームかかる
         self.frame = (self.frame + 1) % 24;
+
+        // rhb の位置を更新
+        let mut velocity = Point { x: 0., y: 0. };
+        if keystate.is_pressed("ArrowDown") {
+            velocity.y += 3.;
+        }
+        if keystate.is_pressed("ArrowUp") {
+            velocity.y -= 3.;
+        }
+        if keystate.is_pressed("ArrowLeft") {
+            velocity.x -= 3.;
+        }
+        if keystate.is_pressed("ArrowRight") {
+            velocity.x += 3.;
+        }
+
+        self.position.x += velocity.x;
+        self.position.y += velocity.y;
     }
 
     fn draw(&self, renderer: &Renderer) {
