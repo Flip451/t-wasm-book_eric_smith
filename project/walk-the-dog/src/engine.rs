@@ -227,7 +227,7 @@ impl KeyState {
         }
     }
 
-    fn is_pressed(&self, keycode: &str) -> bool {
+    pub fn is_pressed(&self, keycode: &str) -> bool {
         self.pressed_keys.contains_key(keycode)
     }
 
