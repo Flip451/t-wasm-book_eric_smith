@@ -131,7 +131,7 @@ impl Renderer {
 
     pub fn draw_image(
         &self,
-        image: HtmlImageElement,
+        image: &HtmlImageElement,
         frame: &Rect,
         destination: &Rect,
     ) -> Result<()> {
