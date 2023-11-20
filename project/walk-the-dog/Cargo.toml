@@ -49,6 +49,7 @@ features = [
     "CanvasRenderingContext2d",
     "HtmlImageElement",
     "Response",
+    "Performance",
 ]
 
 # The `console_error_panic_hook` crate provides better debugging of panics by

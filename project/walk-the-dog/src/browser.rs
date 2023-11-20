@@ -47,6 +47,13 @@ pub fn context() -> Result<CanvasRenderingContext2d> {
         })
 }
 
+pub fn now() -> Result<f64> {
+    Ok(window()?
+        .performance()
+        .ok_or(anyhow!("No performance object found on window"))?
+        .now())
+}
+
 pub fn spawn_local<F>(future: F)
 where
     F: Future<Output = ()> + 'static,
