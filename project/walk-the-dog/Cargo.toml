@@ -35,6 +35,7 @@ wasm-bindgen-futures = "0.4.38"
 serde = { version = "1.0.192", features = ["derive"] }
 gloo-utils = { version = "0.2.0", features = ["serde"] }
 anyhow = "1.0.75"
+async-trait = "0.1.74"
 
 # The `web-sys` crate allows you to interact with the various browser APIs,
 # like the DOM.
