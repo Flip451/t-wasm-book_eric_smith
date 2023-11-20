@@ -36,7 +36,7 @@ pub async fn load_image(source: &str) -> Result<HtmlImageElement> {
     image.set_onerror(Some(error_callback.as_ref().unchecked_ref()));
 
     // 画像の読み込み開始
-    image.set_src("rhb.png");
+    image.set_src(source);
 
     // 画像の読み込み完了を待機
     complete_rx.await??;
@@ -48,7 +48,7 @@ pub async fn load_image(source: &str) -> Result<HtmlImageElement> {
 pub trait Game {
     async fn initialize(&self) -> Result<Box<dyn Game>>;
     fn update(&mut self);
-    fn draw(&self, context: &CanvasRenderingContext2d);
+    fn draw(&self, renderer: &Renderer);
 }
 
 const FRAME_SIZE: f32 = 1. / 60. * 1000.;
@@ -70,6 +70,8 @@ impl GameLoop {
             last_frame: browser::now()?,
             accumulated_delta: 0.,
         };
+
+        let renderer = Renderer::new()?;
 
         // js における以下のコードを模したもの
         //   (なお requestAnimationFrameは渡した関数をブラウザの表示を邪魔しないタイミングで処理されるようにする関数)
@@ -99,7 +101,7 @@ impl GameLoop {
 
             game_loop.last_frame = perf;
 
-            game.draw(&browser::context().expect("Getting canvas context failed"));
+            game.draw(&renderer);
 
             browser::request_animation_frame(f.borrow().as_ref().unwrap()).unwrap();
         }));
@@ -108,4 +110,52 @@ impl GameLoop {
 
         Ok(())
     }
+}
+
+// HtmlRenderingContext2d のラッパー
+pub struct Renderer {
+    context: CanvasRenderingContext2d,
+}
+
+impl Renderer {
+    pub fn new() -> Result<Self> {
+        Ok(Self {
+            context: browser::context()?,
+        })
+    }
+
+    pub fn clear(&self, rect: &Rect) {
+        self.context
+            .clear_rect(rect.x.into(), rect.y.into(), rect.w.into(), rect.h.into());
+    }
+
+    pub fn draw_image(
+        &self,
+        image: HtmlImageElement,
+        frame: &Rect,
+        destination: &Rect,
+    ) -> Result<()> {
+        self.context
+            .draw_image_with_html_image_element_and_sw_and_sh_and_dx_and_dy_and_dw_and_dh(
+                &image,
+                frame.x as f64,
+                frame.y as f64,
+                frame.w as f64,
+                frame.h as f64,
+                destination.x as f64,
+                destination.y as f64,
+                destination.w as f64,
+                destination.h as f64,
+            )
+            .map_err(|js_value| anyhow!("Error drawing image {:#?}", js_value))?;
+
+        Ok(())
+    }
+}
+
+pub struct Rect {
+    pub x: f32,
+    pub y: f32,
+    pub w: f32,
+    pub h: f32,
 }
