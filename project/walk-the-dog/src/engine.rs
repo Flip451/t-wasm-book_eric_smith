@@ -1,8 +1,11 @@
-use std::{cell::RefCell, rc::Rc, sync::Mutex};
+use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::Mutex};
 
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use futures::channel::oneshot;
+use futures::channel::{
+    mpsc::{unbounded, UnboundedReceiver},
+    oneshot,
+};
 use wasm_bindgen::{JsCast, JsValue};
 use web_sys::{CanvasRenderingContext2d, HtmlImageElement};
 
@@ -15,7 +18,7 @@ pub async fn load_image(source: &str) -> Result<HtmlImageElement> {
     // 送受信機の作成
     let (complete_tx, complete_rx) = oneshot::channel::<Result<()>>();
     let success_tx = Rc::new(Mutex::new(Some(complete_tx)));
-    let error_tx = Rc::clone(&success_tx);
+    let error_tx = success_tx.clone();
 
     // 画像の読み込みが完了したことを通知するコールバック関数の作成
     let success_callback = browser::closure_once(move || {
@@ -47,7 +50,7 @@ pub async fn load_image(source: &str) -> Result<HtmlImageElement> {
 #[async_trait(?Send)]
 pub trait Game {
     async fn initialize(&self) -> Result<Box<dyn Game>>;
-    fn update(&mut self);
+    fn update(&mut self, keystate: &KeyState);
     fn draw(&self, renderer: &Renderer);
 }
 
@@ -60,10 +63,15 @@ pub struct GameLoop {
     accumulated_delta: f32,
 }
 
-type SharedLoopClosure = Rc<RefCell<Option<LoopClosure>>>;
+type SharedLoopClosure = Rc<RefCell<Option<LoopClosure<f64>>>>;
 
 impl GameLoop {
     pub async fn start(game: impl Game + 'static) -> Result<()> {
+        // キー入力を受け取るチャンネルを作成
+        let mut keyevent_receiver = prepare_input()?;
+        // キー入力の状態を保持する構造体を作成
+        let mut key_state = KeyState::new();
+
         let mut game = game.initialize().await?;
 
         let mut game_loop = GameLoop {
@@ -93,9 +101,12 @@ impl GameLoop {
             // この値を用いて、前回のフレームからの経過時間を計算し、それを累積時間に加算する
             game_loop.accumulated_delta += (perf - game_loop.last_frame) as f32;
 
+            // キー入力を処理する
+            process_input(&mut key_state, &mut keyevent_receiver);
+
             // 累積時間分だけ update を繰り返す
             while game_loop.accumulated_delta > FRAME_SIZE {
-                game.update();
+                game.update(&key_state);
                 game_loop.accumulated_delta -= FRAME_SIZE;
             }
 
@@ -158,4 +169,73 @@ pub struct Rect {
     pub y: f32,
     pub w: f32,
     pub h: f32,
+}
+
+enum KeyPress {
+    KeyUp(web_sys::KeyboardEvent),
+    KeyDown(web_sys::KeyboardEvent),
+}
+
+fn prepare_input() -> Result<UnboundedReceiver<KeyPress>> {
+    let (keyevent_tx, keyevent_rx) = unbounded();
+    let keydown_tx = Rc::new(RefCell::new(keyevent_tx));
+    let keyup_tx = keydown_tx.clone();
+
+    let canvas = browser::canvas().expect("Canvas not found");
+
+    let onkeydown = browser::create_raf_closure(move |keycode: web_sys::KeyboardEvent| {
+        keydown_tx
+            .borrow_mut()
+            .start_send(KeyPress::KeyDown(keycode));
+    });
+    canvas.set_onkeydown(Some(onkeydown.as_ref().unchecked_ref()));
+
+    let onkeyup = browser::create_raf_closure(move |keycode: web_sys::KeyboardEvent| {
+        keyup_tx.borrow_mut().start_send(KeyPress::KeyUp(keycode));
+    });
+    canvas.set_onkeyup(Some(onkeyup.as_ref().unchecked_ref()));
+
+    onkeydown.forget();
+    onkeyup.forget();
+
+    Ok(keyevent_rx)
+}
+
+fn process_input(state: &mut KeyState, keyevent_receiver: &mut UnboundedReceiver<KeyPress>) {
+    loop {
+        match keyevent_receiver.try_next() {
+            Ok(None) => break,
+            Err(_) => break,
+            Ok(Some(event)) => match event {
+                KeyPress::KeyDown(keyboard_event) => {
+                    state.set_pressed(&keyboard_event.code(), keyboard_event)
+                }
+                KeyPress::KeyUp(keyboard_event) => state.set_released(&keyboard_event.code()),
+            },
+        }
+    }
+}
+
+pub struct KeyState {
+    pressed_keys: HashMap<String, web_sys::KeyboardEvent>,
+}
+
+impl KeyState {
+    fn new() -> Self {
+        Self {
+            pressed_keys: HashMap::new(),
+        }
+    }
+
+    fn is_pressed(&self, keycode: &str) -> bool {
+        self.pressed_keys.contains_key(keycode)
+    }
+
+    fn set_pressed(&mut self, keycode: &str, event: web_sys::KeyboardEvent) {
+        self.pressed_keys.insert(keycode.to_string(), event);
+    }
+
+    fn set_released(&mut self, keycode: &str) {
+        self.pressed_keys.remove(keycode);
+    }
 }
