@@ -33,6 +33,13 @@ pub struct WalkTheDog {
     image: Option<HtmlImageElement>,
     sheet: Option<Sheet>,
     frame: u8,
+    position: Position,
+}
+
+#[derive(Clone, Copy)]
+struct Position {
+    x: f32,
+    y: f32,
 }
 
 impl WalkTheDog {
@@ -41,6 +48,7 @@ impl WalkTheDog {
             image: None,
             sheet: None,
             frame: 0,
+            position: Position { x: 300., y: 300. },
         }
     }
 }
@@ -63,6 +71,7 @@ impl Game for WalkTheDog {
             image: Some(image),
             sheet: Some(sheet),
             frame: self.frame,
+            position: self.position,
         }))
     }
 
@@ -99,8 +108,8 @@ impl Game for WalkTheDog {
                 h: sprite.frame.h as f32,
             },
             &Rect {
-                x: 300.,
-                y: 300.,
+                x: self.position.x,
+                y: self.position.y,
                 w: sprite.frame.w as f32,
                 h: sprite.frame.h as f32,
             },
