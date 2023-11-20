@@ -1,10 +1,5 @@
-use std::cell::RefCell;
 use std::collections::HashMap;
-use std::rc::Rc;
 
-use browser::create_raf_closure;
-use browser::request_animation_frame;
-use browser::LoopClosure;
 use gloo_utils::format::JsValueSerdeExt;
 use serde::Deserialize;
 use wasm_bindgen::prelude::*;
@@ -51,28 +46,6 @@ pub fn main_js() -> Result<(), JsValue> {
         let image = engine::load_image("rhb.png")
             .await
             .expect("Could not load rhb.png");
-
-        // js における以下のコードを模したもの
-        //   (なお requestAnimationFrameは渡した関数をブラウザの表示を邪魔しないタイミングで処理されるようにする関数)
-        //   <https://rustwasm.github.io/docs/wasm-bindgen/examples/request-animation-frame.html> を参照せよ
-        //
-        // function animate(now) {
-        //     /* ここに処理を記述 */
-        //     requestAnimationFrame(animate);
-        // }
-        //
-        // requestAnimationFrame(animate);
-        //
-        let f: Rc<RefCell<Option<LoopClosure>>> = Rc::new(RefCell::new(None));
-        let g = f.clone();
-
-        let animate = Some(create_raf_closure(move |perf: f64| {
-            /* ここに処理を記述 */
-            request_animation_frame(f.borrow().as_ref().unwrap()).unwrap();
-        }));
-
-        *g.borrow_mut() = animate;
-        request_animation_frame(g.borrow().as_ref().unwrap()).unwrap();
 
         // 定期実行するコールバック関数の作成
         let mut frame = -1;
