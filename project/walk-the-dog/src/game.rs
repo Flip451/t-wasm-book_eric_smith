@@ -66,7 +66,7 @@ impl Game for WalkTheDog {
         }))
     }
 
-    fn update(&mut self) {
+    fn update(&mut self, _keystate: &engine::KeyState) {
         // rhb の動作が一巡するのには 24 フレームかかる
         self.frame = (self.frame + 1) % 24;
     }
