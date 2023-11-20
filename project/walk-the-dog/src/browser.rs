@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Result};
 use futures::Future;
 use wasm_bindgen::{
-    closure::{Closure, WasmClosureFnOnce},
+    closure::{Closure, IntoWasmClosure, WasmClosureFnOnce},
     JsCast, JsValue,
 };
 use wasm_bindgen_futures::JsFuture;
@@ -101,13 +101,17 @@ where
     Closure::once(fn_once)
 }
 
-pub type LoopClosure = Closure<dyn FnMut(f64)>;
-pub fn request_animation_frame(callback: &LoopClosure) -> Result<i32> {
+pub type LoopClosure<T> = Closure<dyn FnMut(T)>;
+pub fn request_animation_frame(callback: &LoopClosure<f64>) -> Result<i32> {
     window()?
         .request_animation_frame(callback.as_ref().unchecked_ref())
         .map_err(|js_value| anyhow!("Error requesting animation frame {:#?}", js_value))
 }
 
-pub fn create_raf_closure(f: impl FnMut(f64) + 'static) -> LoopClosure {
+pub fn create_raf_closure<F, T>(f: F) -> LoopClosure<T>
+where
+    F: FnMut(T) + 'static + IntoWasmClosure<dyn (FnMut(T) -> ())>,
+    T: wasm_bindgen::convert::FromWasmAbi + 'static,
+{
     Closure::new(f)
 }

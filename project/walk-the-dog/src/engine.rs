@@ -60,7 +60,7 @@ pub struct GameLoop {
     accumulated_delta: f32,
 }
 
-type SharedLoopClosure = Rc<RefCell<Option<LoopClosure>>>;
+type SharedLoopClosure = Rc<RefCell<Option<LoopClosure<f64>>>>;
 
 impl GameLoop {
     pub async fn start(game: impl Game + 'static) -> Result<()> {
@@ -158,4 +158,19 @@ pub struct Rect {
     pub y: f32,
     pub w: f32,
     pub h: f32,
+}
+
+fn prepare_input() {
+    let canvas = browser::canvas().expect("Canvas not found");
+
+    let onkeydown = browser::create_raf_closure(move |keycode: web_sys::KeyboardEvent| {
+        log!("Keydown: {}", keycode.key());
+    });
+    canvas.set_onkeydown(Some(onkeydown.as_ref().unchecked_ref()));
+
+    let onkeyup = browser::create_raf_closure(move |keycode: web_sys::KeyboardEvent| {});
+    canvas.set_onkeyup(Some(onkeyup.as_ref().unchecked_ref()));
+
+    onkeydown.forget();
+    onkeyup.forget();
 }
