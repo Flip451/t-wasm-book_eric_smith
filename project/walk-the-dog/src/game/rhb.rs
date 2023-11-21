@@ -10,10 +10,12 @@ const RUNNING_SPEED: f32 = 3.;
 // フレーム名
 const IDLE_FRAME_NAME: &str = "Idle";
 const RUNNING_FRAME_NAME: &str = "Run";
+const SLIDING_FRAME_NAME: &str = "Slide";
 
 // フレーム数
 const IDLE_FRAME_COUNT: u8 = 29;
 const RUNNING_FRAME_COUNT: u8 = 24;
+const SLIDING_FRAME_COUNT: u8 = 14;
 
 pub struct RedHatBoy {
     state_machine: RedHatBoyStateMachine,
@@ -65,6 +67,10 @@ impl RedHatBoy {
 
     pub fn run_left(&mut self) {
         self.state_machine.transition(Event::RunLeft);
+    }
+
+    pub fn slide(&mut self) {
+        self.state_machine.transition(Event::Slide);
     }
 }
 
@@ -136,10 +142,23 @@ impl RedHatBoyState<Running> {
     }
 }
 
+struct Sliding;
+impl RedHatBoyState<Sliding> {
+    fn frame_name(&self) -> &str {
+        SLIDING_FRAME_NAME
+    }
+
+    fn update(&mut self) {
+        self.context.update_frame(SLIDING_FRAME_COUNT);
+        self.context.update_position();
+    }
+}
+
 // ステートマシーン本体
 enum RedHatBoyStateMachine {
     Idle(RedHatBoyState<Idle>),
     Running(RedHatBoyState<Running>),
+    Sliding(RedHatBoyState<Sliding>),
 }
 
 impl RedHatBoyStateMachine {
@@ -147,6 +166,7 @@ impl RedHatBoyStateMachine {
         match self {
             RedHatBoyStateMachine::Idle(state) => state.frame_name(),
             RedHatBoyStateMachine::Running(state) => state.frame_name(),
+            RedHatBoyStateMachine::Sliding(state) => state.frame_name(),
         }
     }
 
@@ -154,6 +174,7 @@ impl RedHatBoyStateMachine {
         match self {
             RedHatBoyStateMachine::Idle(state) => &state.context(),
             RedHatBoyStateMachine::Running(state) => &state.context(),
+            RedHatBoyStateMachine::Sliding(state) => &state.context(),
         }
     }
 
@@ -163,6 +184,9 @@ impl RedHatBoyStateMachine {
                 state.update();
             }
             RedHatBoyStateMachine::Running(ref mut state) => {
+                state.update();
+            }
+            RedHatBoyStateMachine::Sliding(ref mut state) => {
                 state.update();
             }
         }
@@ -179,6 +203,12 @@ impl From<RedHatBoyState<Idle>> for RedHatBoyStateMachine {
 impl From<RedHatBoyState<Running>> for RedHatBoyStateMachine {
     fn from(state: RedHatBoyState<Running>) -> Self {
         RedHatBoyStateMachine::Running(state)
+    }
+}
+
+impl From<RedHatBoyState<Sliding>> for RedHatBoyStateMachine {
+    fn from(state: RedHatBoyState<Sliding>) -> Self {
+        RedHatBoyStateMachine::Sliding(state)
     }
 }
 
@@ -229,12 +259,22 @@ impl RedHatBoyState<Running> {
             _state: Running,
         }
     }
+
+    fn slide(&self) -> RedHatBoyState<Sliding> {
+        let mut context = self.context.clone();
+        context.reset_frame();
+        RedHatBoyState {
+            context: context,
+            _state: Sliding,
+        }
+    }
 }
 
 // イベント
 enum Event {
     RunRight,
     RunLeft,
+    Slide,
 }
 
 // イベントを受け取って状態遷移を行うメソッド
@@ -249,6 +289,9 @@ impl RedHatBoyStateMachine {
             }
             (&RedHatBoyStateMachine::Running(ref state), Event::RunRight) => {
                 *self = state.run_right().into()
+            }
+            (&RedHatBoyStateMachine::Running(ref state), Event::Slide) => {
+                *self = state.slide().into()
             }
             _ => {}
         };

@@ -63,6 +63,10 @@ impl Game for WalkTheDog {
         if keystate.is_pressed("ArrowLeft") {
             self.rhb.as_mut().expect("RedHatBoy not found").run_left();
         }
+
+        if keystate.is_pressed("ArrowDown") {
+            self.rhb.as_mut().expect("RedHatBoy not found").slide();
+        }
     }
 
     fn draw(&self, renderer: &Renderer) {
