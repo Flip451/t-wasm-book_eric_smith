@@ -1,26 +1,29 @@
 use anyhow::{anyhow, Result};
-use futures::Future;
-use wasm_bindgen::{
-    closure::{Closure, IntoWasmClosure, WasmClosureFnOnce},
-    JsCast, JsValue,
-};
+use wasm_bindgen::{JsCast, JsValue};
 use wasm_bindgen_futures::JsFuture;
-use web_sys::{
-    CanvasRenderingContext2d, Document, HtmlCanvasElement, HtmlImageElement, Response, Window,
-};
 
+pub use self::animation_frame::*;
+pub use self::async_wrapper::*;
 pub use self::canvas::*;
-pub use self::utils::*;
+pub use self::closure::*;
+pub use self::elements::*;
 pub use self::json::*;
+pub use self::utils::*;
+use self::window::*;
 
-pub fn window() -> Result<Window> {
-    web_sys::window().ok_or(anyhow!("no global `window` exists"))
-}
+pub mod window {
+    use super::*;
+    use web_sys::{Document, Window};
 
-fn document() -> Result<Document> {
-    window()?
-        .document()
-        .ok_or(anyhow!("should have a document on window"))
+    pub(super) fn window() -> Result<Window> {
+        web_sys::window().ok_or(anyhow!("no global `window` exists"))
+    }
+
+    pub(super) fn document() -> Result<Document> {
+        window()?
+            .document()
+            .ok_or(anyhow!("should have a document on window"))
+    }
 }
 
 pub mod utils {
@@ -42,6 +45,7 @@ pub mod utils {
 
 pub mod canvas {
     use super::*;
+    use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
 
     pub fn canvas() -> Result<HtmlCanvasElement> {
         document()?
@@ -66,15 +70,20 @@ pub mod canvas {
     }
 }
 
-pub fn spawn_local<F>(future: F)
-where
-    F: Future<Output = ()> + 'static,
-{
-    wasm_bindgen_futures::spawn_local(future);
+pub mod async_wrapper {
+    use futures::Future;
+
+    pub fn spawn_local<F>(future: F)
+    where
+        F: Future<Output = ()> + 'static,
+    {
+        wasm_bindgen_futures::spawn_local(future);
+    }
 }
 
 pub mod json {
     use super::*;
+    use web_sys::Response;
 
     async fn fetch_with_str(resource: &str) -> Result<JsValue> {
         // js の window.fetch を呼び出す
@@ -105,30 +114,46 @@ pub mod json {
     }
 }
 
-pub fn new_image() -> Result<HtmlImageElement> {
-    HtmlImageElement::new()
-        .map_err(|js_value| anyhow!("Error creating HTMLImageElement {:#?}", js_value))
+pub mod elements {
+    use super::*;
+    use web_sys::HtmlImageElement;
+
+    pub fn new_image() -> Result<HtmlImageElement> {
+        HtmlImageElement::new()
+            .map_err(|js_value| anyhow!("Error creating HTMLImageElement {:#?}", js_value))
+    }
 }
 
-pub fn closure_once<F, A, R>(fn_once: F) -> Closure<F::FnMut>
-where
-    F: 'static + WasmClosureFnOnce<A, R>,
-{
-    Closure::once(fn_once)
+pub mod closure {
+    use wasm_bindgen::closure::{Closure, IntoWasmClosure, WasmClosureFnOnce};
+
+    pub fn closure_once<F, A, R>(fn_once: F) -> Closure<F::FnMut>
+    where
+        F: 'static + WasmClosureFnOnce<A, R>,
+    {
+        Closure::once(fn_once)
+    }
+
+    pub type WasmClosure<A, R> = Closure<dyn FnMut(A) -> R + 'static>;
+
+    pub fn create_wasm_closure<F, A, R>(f: F) -> WasmClosure<A, R>
+    where
+        F: IntoWasmClosure<dyn (FnMut(A) -> R)> + 'static,
+        A: wasm_bindgen::convert::FromWasmAbi + 'static,
+        R: wasm_bindgen::convert::IntoWasmAbi + 'static,
+    {
+        Closure::new(f)
+    }
 }
 
-pub type LoopClosure<T> = Closure<dyn FnMut(T)>;
+pub mod animation_frame {
+    use super::*;
 
-pub fn request_animation_frame(callback: &LoopClosure<f64>) -> Result<i32> {
-    window()?
-        .request_animation_frame(callback.as_ref().unchecked_ref())
-        .map_err(|js_value| anyhow!("Error requesting animation frame {:#?}", js_value))
-}
+    pub type LoopClosure = WasmClosure<f64, ()>;
 
-pub fn create_raf_closure<F, T>(f: F) -> LoopClosure<T>
-where
-    F: FnMut(T) + 'static + IntoWasmClosure<dyn (FnMut(T) -> ())>,
-    T: wasm_bindgen::convert::FromWasmAbi + 'static,
-{
-    Closure::new(f)
+    pub fn request_animation_frame(callback: &LoopClosure) -> Result<i32> {
+        window()?
+            .request_animation_frame(callback.as_ref().unchecked_ref())
+            .map_err(|js_value| anyhow!("Error requesting animation frame {:#?}", js_value))
+    }
 }
