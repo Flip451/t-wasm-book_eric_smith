@@ -67,6 +67,16 @@ pub struct RedHatBoyContext {
     velocity: Point,
 }
 
+impl RedHatBoyContext {
+    fn update_frame(&mut self, frame_count: u8) {
+        self.frame = (self.frame + 1) % frame_count;
+    }
+
+    fn reset_frame(&mut self) {
+        self.frame = 0;
+    }
+}
+
 // RHB の状態を表す構造体
 struct RedHatBoyState<S> {
     context: RedHatBoyContext,
@@ -85,12 +95,20 @@ impl RedHatBoyState<Idle> {
     fn frame_name(&self) -> &str {
         IDLE_FRAME_NAME
     }
+
+    fn update(&mut self) {
+        self.context.update_frame(IDLE_FRAME_COUNT);
+    }
 }
 
 struct Running;
 impl RedHatBoyState<Running> {
     fn frame_name(&self) -> &str {
         RUNNING_FRAME_NAME
+    }
+
+    fn update(&mut self) {
+        self.context.update_frame(RUNNING_FRAME_COUNT);
     }
 }
 
@@ -118,14 +136,14 @@ impl RedHatBoyStateMachine {
     fn update(&mut self, keystate: &KeyState) {
         match self {
             RedHatBoyStateMachine::Idle(ref mut state) => {
-                state.context.frame = (state.context.frame + 1) % IDLE_FRAME_COUNT;
+                state.update();
+
                 if keystate.is_pressed("ArrowRight") {
-                    state.context.frame = 0;
                     self.transition(Event::Run);
                 }
             }
             RedHatBoyStateMachine::Running(ref mut state) => {
-                state.context.frame = (state.context.frame + 1) % RUNNING_FRAME_COUNT;
+                state.update();
             }
         }
     }
@@ -161,8 +179,10 @@ impl RedHatBoyState<Idle> {
 // 状態遷移を定義
 impl RedHatBoyState<Idle> {
     fn run(&self) -> RedHatBoyState<Running> {
+        let mut context = self.context.clone();
+        context.reset_frame();
         RedHatBoyState {
-            context: self.context.clone(),
+            context: context,
             _state: Running,
         }
     }
