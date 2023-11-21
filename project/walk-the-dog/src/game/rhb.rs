@@ -31,11 +31,34 @@ enum RedHatBoyStateMachine {
     Running(RedHatBoyState<Running>),
 }
 
+// 状態と列挙子を関連付ける
+impl From<RedHatBoyState<Running>> for RedHatBoyStateMachine {
+    fn from(state: RedHatBoyState<Running>) -> Self {
+        RedHatBoyStateMachine::Running(state)
+    }
+}
+
+// 状態遷移を定義
 impl RedHatBoyState<Idle> {
     fn run(self) -> RedHatBoyState<Running> {
         RedHatBoyState {
             context: self.context,
             _state: Running,
+        }
+    }
+}
+
+// イベント
+enum Event {
+    Run,
+}
+
+// イベントを受け取って状態遷移を行うメソッド
+impl RedHatBoyStateMachine {
+    fn transition(self, event: Event) -> Self {
+        match (self, event) {
+            (RedHatBoyStateMachine::Idle(state), Event::Run) => state.run().into(),
+            (state_machine, _) => state_machine,
         }
     }
 }
