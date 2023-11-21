@@ -17,8 +17,8 @@ pub struct WalkTheDog {
     // image: Option<HtmlImageElement>,
     // sheet: Option<SpriteSheet>,
     rhb: Option<RedHatBoy>,
-    frame: u8,
-    position: Point,
+    // frame: u8,
+    // position: Point,
 }
 
 #[derive(Clone, Copy)]
@@ -33,8 +33,8 @@ impl WalkTheDog {
             // image: None,
             // sheet: None,
             rhb: None,
-            frame: 0,
-            position: Point { x: 300., y: 300. },
+            // frame: 0,
+            // position: Point { x: 300., y: 300. },
         }
     }
 }
@@ -57,32 +57,36 @@ impl Game for WalkTheDog {
             // image: Some(image),
             // sheet: Some(sheet),
             rhb: Some(RedHatBoy::new(sheet, image)),
-            frame: self.frame,
-            position: self.position,
+            // frame: self.frame,
+            // position: self.position,
         }))
     }
 
     fn update(&mut self, keystate: &engine::KeyState) {
-        // rhb の動作が一巡するのには 24 フレームかかる
-        self.frame = (self.frame + 1) % 24;
+        // // rhb の動作が一巡するのには 24 フレームかかる
+        // self.frame = (self.frame + 1) % 24;
 
-        // rhb の位置を更新
-        let mut velocity = Point { x: 0., y: 0. };
-        if keystate.is_pressed("ArrowDown") {
-            velocity.y += 3.;
-        }
-        if keystate.is_pressed("ArrowUp") {
-            velocity.y -= 3.;
-        }
-        if keystate.is_pressed("ArrowLeft") {
-            velocity.x -= 3.;
-        }
-        if keystate.is_pressed("ArrowRight") {
-            velocity.x += 3.;
-        }
+        // // rhb の位置を更新
+        // let mut velocity = Point { x: 0., y: 0. };
+        // if keystate.is_pressed("ArrowDown") {
+        //     velocity.y += 3.;
+        // }
+        // if keystate.is_pressed("ArrowUp") {
+        //     velocity.y -= 3.;
+        // }
+        // if keystate.is_pressed("ArrowLeft") {
+        //     velocity.x -= 3.;
+        // }
+        // if keystate.is_pressed("ArrowRight") {
+        //     velocity.x += 3.;
+        // }
 
-        self.position.x += velocity.x;
-        self.position.y += velocity.y;
+        // self.position.x += velocity.x;
+        // self.position.y += velocity.y;
+        self.rhb
+            .as_mut()
+            .expect("RedHatBoy not found")
+            .update(keystate);
     }
 
     fn draw(&self, renderer: &Renderer) {

@@ -1,12 +1,18 @@
 use web_sys::HtmlImageElement;
 
-use crate::engine::Renderer;
+use crate::engine::{KeyState, Renderer};
 
 use super::{sprite::SpriteSheet, Point};
 
 const FLOOR: f32 = 475.;
+
+// フレーム名
 const IDLE_FRAME_NAME: &str = "Idle";
 const RUNNING_FRAME_NAME: &str = "Run";
+
+// フレーム数
+const IDLE_FRAME_COUNT: u8 = 29;
+const RUNNING_FRAME_COUNT: u8 = 24;
 
 pub struct RedHatBoy {
     state_machine: RedHatBoyStateMachine,
@@ -47,9 +53,14 @@ impl RedHatBoy {
             ),
         );
     }
+
+    pub fn update(&mut self, keystate: &KeyState) {
+        self.state_machine.update(keystate);
+    }
 }
 
 // すべての状態に共通する情報
+#[derive(Clone)]
 pub struct RedHatBoyContext {
     frame: u8,
     position: Point,
@@ -103,9 +114,30 @@ impl RedHatBoyStateMachine {
             RedHatBoyStateMachine::Running(state) => &state.context(),
         }
     }
+
+    fn update(&mut self, keystate: &KeyState) {
+        match self {
+            RedHatBoyStateMachine::Idle(ref mut state) => {
+                state.context.frame = (state.context.frame + 1) % IDLE_FRAME_COUNT;
+                if keystate.is_pressed("ArrowRight") {
+                    state.context.frame = 0;
+                    self.transition(Event::Run);
+                }
+            }
+            RedHatBoyStateMachine::Running(ref mut state) => {
+                state.context.frame = (state.context.frame + 1) % RUNNING_FRAME_COUNT;
+            }
+        }
+    }
 }
 
 // 状態と列挙子を関連付ける
+impl From<RedHatBoyState<Idle>> for RedHatBoyStateMachine {
+    fn from(state: RedHatBoyState<Idle>) -> Self {
+        RedHatBoyStateMachine::Idle(state)
+    }
+}
+
 impl From<RedHatBoyState<Running>> for RedHatBoyStateMachine {
     fn from(state: RedHatBoyState<Running>) -> Self {
         RedHatBoyStateMachine::Running(state)
@@ -128,9 +160,9 @@ impl RedHatBoyState<Idle> {
 
 // 状態遷移を定義
 impl RedHatBoyState<Idle> {
-    fn run(self) -> RedHatBoyState<Running> {
+    fn run(&self) -> RedHatBoyState<Running> {
         RedHatBoyState {
-            context: self.context,
+            context: self.context.clone(),
             _state: Running,
         }
     }
@@ -143,10 +175,10 @@ enum Event {
 
 // イベントを受け取って状態遷移を行うメソッド
 impl RedHatBoyStateMachine {
-    fn transition(self, event: Event) -> Self {
-        match (self, event) {
-            (RedHatBoyStateMachine::Idle(state), Event::Run) => state.run().into(),
-            (state_machine, _) => state_machine,
-        }
+    fn transition(&mut self, event: Event) {
+        match (&self, event) {
+            (&RedHatBoyStateMachine::Idle(ref state), Event::Run) => *self = state.run().into(),
+            _ => {}
+        };
     }
 }
