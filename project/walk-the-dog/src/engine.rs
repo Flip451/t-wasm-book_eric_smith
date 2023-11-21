@@ -239,3 +239,9 @@ impl KeyState {
         self.pressed_keys.remove(keycode);
     }
 }
+
+#[derive(Clone, Copy)]
+pub struct Point {
+    pub x: f32,
+    pub y: f32,
+}

@@ -17,12 +17,6 @@ pub enum WalkTheDog {
     Loaded(RedHatBoy),
 }
 
-#[derive(Clone, Copy)]
-struct Point {
-    x: f32,
-    y: f32,
-}
-
 impl WalkTheDog {
     pub fn new() -> Self {
         Self::Loading
