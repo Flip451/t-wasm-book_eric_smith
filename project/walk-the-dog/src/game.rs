@@ -69,6 +69,10 @@ impl Game for WalkTheDog {
                 if keystate.is_pressed("ArrowDown") {
                     rhb.slide();
                 }
+
+                if keystate.is_pressed("ArrowUp") {
+                    rhb.jump();
+                }
             }
         }
     }

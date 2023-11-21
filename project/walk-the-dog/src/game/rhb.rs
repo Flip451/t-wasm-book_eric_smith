@@ -6,16 +6,20 @@ use super::{sprite::SpriteSheet, Point};
 
 const FLOOR: f32 = 475.;
 const RUNNING_SPEED: f32 = 3.;
+const JUMP_SPEED: f32 = -25.;
+const GRAVITY: f32 = 1.;
 
 // フレーム名
 const IDLE_FRAME_NAME: &str = "Idle";
 const RUNNING_FRAME_NAME: &str = "Run";
 const SLIDING_FRAME_NAME: &str = "Slide";
+const JUMPING_FRAME_NAME: &str = "Jump";
 
 // フレーム数
 const IDLE_FRAME_COUNT: u8 = 29;
 const RUNNING_FRAME_COUNT: u8 = 24;
 const SLIDING_FRAME_COUNT: u8 = 14;
+const JUMPING_FRAME_COUNT: u8 = 35;
 
 pub struct RedHatBoy {
     state_machine: RedHatBoyStateMachine,
@@ -72,6 +76,10 @@ impl RedHatBoy {
     pub fn slide(&mut self) {
         self.state_machine.transition(Event::Slide);
     }
+
+    pub fn jump(&mut self) {
+        self.state_machine.transition(Event::Jump);
+    }
 }
 
 // すべての状態に共通する情報
@@ -102,6 +110,19 @@ impl RedHatBoyContext {
 
     fn run_left(&mut self) {
         self.velocity.x = -RUNNING_SPEED;
+    }
+
+    fn jump(&mut self) {
+        self.velocity.y = JUMP_SPEED;
+    }
+
+    fn land(&mut self) {
+        self.velocity.y = 0.;
+        self.position.y = FLOOR;
+    }
+
+    fn fall(&mut self) {
+        self.velocity.y += GRAVITY;
     }
 }
 
@@ -139,11 +160,19 @@ impl RedHatBoyState<Sliding> {
     }
 }
 
+struct Jumping;
+impl RedHatBoyState<Jumping> {
+    fn frame_name(&self) -> &str {
+        JUMPING_FRAME_NAME
+    }
+}
+
 // ステートマシーン本体
 enum RedHatBoyStateMachine {
     Idle(RedHatBoyState<Idle>),
     Running(RedHatBoyState<Running>),
     Sliding(RedHatBoyState<Sliding>),
+    Jumping(RedHatBoyState<Jumping>),
 }
 
 impl RedHatBoyStateMachine {
@@ -152,6 +181,7 @@ impl RedHatBoyStateMachine {
             RedHatBoyStateMachine::Idle(state) => state.frame_name(),
             RedHatBoyStateMachine::Running(state) => state.frame_name(),
             RedHatBoyStateMachine::Sliding(state) => state.frame_name(),
+            RedHatBoyStateMachine::Jumping(state) => state.frame_name(),
         }
     }
 
@@ -160,6 +190,7 @@ impl RedHatBoyStateMachine {
             RedHatBoyStateMachine::Idle(state) => &state.context(),
             RedHatBoyStateMachine::Running(state) => &state.context(),
             RedHatBoyStateMachine::Sliding(state) => &state.context(),
+            RedHatBoyStateMachine::Jumping(state) => &state.context(),
         }
     }
 }
@@ -180,6 +211,12 @@ impl From<RedHatBoyState<Running>> for RedHatBoyStateMachine {
 impl From<RedHatBoyState<Sliding>> for RedHatBoyStateMachine {
     fn from(state: RedHatBoyState<Sliding>) -> Self {
         RedHatBoyStateMachine::Sliding(state)
+    }
+}
+
+impl From<RedHatBoyState<Jumping>> for RedHatBoyStateMachine {
+    fn from(state: RedHatBoyState<Jumping>) -> Self {
+        RedHatBoyStateMachine::Jumping(state)
     }
 }
 
@@ -259,6 +296,16 @@ impl RedHatBoyState<Running> {
             _state: Sliding,
         }
     }
+
+    fn jump(&self) -> RedHatBoyState<Jumping> {
+        let mut context = self.context.clone();
+        context.reset_frame();
+        context.jump();
+        RedHatBoyState {
+            context,
+            _state: Jumping,
+        }
+    }
 }
 
 enum SlidngEndState {
@@ -294,11 +341,47 @@ impl RedHatBoyState<Sliding> {
     }
 }
 
+enum JumpEndState {
+    Jumping(RedHatBoyState<Jumping>),
+    Complete(RedHatBoyState<Running>),
+}
+
+impl From<JumpEndState> for RedHatBoyStateMachine {
+    fn from(state: JumpEndState) -> Self {
+        match state {
+            JumpEndState::Jumping(state) => RedHatBoyStateMachine::Jumping(state),
+            JumpEndState::Complete(state) => RedHatBoyStateMachine::Running(state),
+        }
+    }
+}
+
+impl RedHatBoyState<Jumping> {
+    fn update(&self) -> JumpEndState {
+        let mut context = self.context.clone();
+        context.update_frame(JUMPING_FRAME_COUNT);
+        context.update_position();
+        context.fall();
+        if context.position.y >= FLOOR {
+            context.land();
+            JumpEndState::Complete(RedHatBoyState {
+                context,
+                _state: Running,
+            })
+        } else {
+            JumpEndState::Jumping(RedHatBoyState {
+                context,
+                _state: Jumping,
+            })
+        }
+    }
+}
+
 // イベント
 enum Event {
     RunRight,
     RunLeft,
     Slide,
+    Jump,
     Update,
 }
 
@@ -306,6 +389,7 @@ enum Event {
 impl RedHatBoyStateMachine {
     fn transition(&mut self, event: Event) {
         match (&self, event) {
+            // キー入力による状態遷移
             (RedHatBoyStateMachine::Idle(ref state), Event::RunRight) => {
                 *self = state.start_run().into()
             }
@@ -318,6 +402,8 @@ impl RedHatBoyStateMachine {
             (RedHatBoyStateMachine::Running(ref state), Event::Slide) => {
                 *self = state.slide().into()
             }
+            (RedHatBoyStateMachine::Running(ref state), Event::Jump) => *self = state.jump().into(),
+            // 時間経過による update 処理
             (RedHatBoyStateMachine::Idle(ref state), Event::Update) => {
                 *self = state.update().into()
             }
@@ -325,6 +411,9 @@ impl RedHatBoyStateMachine {
                 *self = state.update().into()
             }
             (RedHatBoyStateMachine::Sliding(ref state), Event::Update) => {
+                *self = state.update().into()
+            }
+            (RedHatBoyStateMachine::Jumping(ref state), Event::Update) => {
                 *self = state.update().into()
             }
             _ => {}
