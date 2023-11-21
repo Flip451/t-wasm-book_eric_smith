@@ -1,14 +1,13 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use gloo_utils::format::JsValueSerdeExt;
-use web_sys::HtmlImageElement;
 
 use crate::{
     browser,
     engine::{self, Game, Rect, Renderer},
 };
 
-use self::{sprite::SpriteSheet, rhb::RedHatBoy};
+use self::{rhb::RedHatBoy, sprite::SpriteSheet};
 
 mod rhb;
 mod sprite;
@@ -30,11 +29,7 @@ struct Point {
 impl WalkTheDog {
     pub fn new() -> Self {
         Self {
-            // image: None,
-            // sheet: None,
             rhb: None,
-            // frame: 0,
-            // position: Point { x: 300., y: 300. },
         }
     }
 }
@@ -54,52 +49,23 @@ impl Game for WalkTheDog {
         let image = engine::load_image("rhb.png").await?;
 
         Ok(Box::new(WalkTheDog {
-            // image: Some(image),
-            // sheet: Some(sheet),
             rhb: Some(RedHatBoy::new(sheet, image)),
-            // frame: self.frame,
-            // position: self.position,
         }))
     }
 
     fn update(&mut self, keystate: &engine::KeyState) {
-        // // rhb の動作が一巡するのには 24 フレームかかる
-        // self.frame = (self.frame + 1) % 24;
+        self.rhb.as_mut().expect("RedHatBoy not found").update();
 
-        // // rhb の位置を更新
-        // let mut velocity = Point { x: 0., y: 0. };
-        // if keystate.is_pressed("ArrowDown") {
-        //     velocity.y += 3.;
-        // }
-        // if keystate.is_pressed("ArrowUp") {
-        //     velocity.y -= 3.;
-        // }
-        // if keystate.is_pressed("ArrowLeft") {
-        //     velocity.x -= 3.;
-        // }
-        // if keystate.is_pressed("ArrowRight") {
-        //     velocity.x += 3.;
-        // }
+        if keystate.is_pressed("ArrowRight") {
+            self.rhb.as_mut().expect("RedHatBoy not found").run_right();
+        }
 
-        // self.position.x += velocity.x;
-        // self.position.y += velocity.y;
-        self.rhb
-            .as_mut()
-            .expect("RedHatBoy not found")
-            .update(keystate);
+        if keystate.is_pressed("ArrowLeft") {
+            self.rhb.as_mut().expect("RedHatBoy not found").run_left();
+        }
     }
 
     fn draw(&self, renderer: &Renderer) {
-        // let current_sprite = self.frame / 3 + 1;
-        // let frame_name = format!("Run ({}).png", current_sprite);
-        // シートの中から指定の画像（Run (*).png）の位置を取得
-        // let sprite = self
-        //     .sheet
-        //     .as_ref()
-        //     .expect("Sheet not found")
-        //     .frames
-        //     .get(&frame_name)
-        //     .expect("Cell not found");
         renderer.clear(&Rect {
             x: 0.,
             y: 0.,
@@ -107,12 +73,6 @@ impl Game for WalkTheDog {
             h: 600.,
         });
 
-        // キャンバスに指定の画像を描画
-        // renderer.draw_image(
-        //     self.image.as_ref().expect("Image not found"),
-        //     &sprite.to_rect_on_sheet(),
-        //     &sprite.to_rect_on_canvas(self.position.x, self.position.y),
-        // );
         self.rhb
             .as_ref()
             .expect("RedHatBoy not found")

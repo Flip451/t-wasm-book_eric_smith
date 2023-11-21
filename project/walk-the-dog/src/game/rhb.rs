@@ -1,10 +1,11 @@
 use web_sys::HtmlImageElement;
 
-use crate::engine::{KeyState, Renderer};
+use crate::engine::Renderer;
 
 use super::{sprite::SpriteSheet, Point};
 
 const FLOOR: f32 = 475.;
+const RUNNING_SPEED: f32 = 3.;
 
 // フレーム名
 const IDLE_FRAME_NAME: &str = "Idle";
@@ -54,8 +55,16 @@ impl RedHatBoy {
         );
     }
 
-    pub fn update(&mut self, keystate: &KeyState) {
-        self.state_machine.update(keystate);
+    pub fn update(&mut self) {
+        self.state_machine.update();
+    }
+
+    pub fn run_right(&mut self) {
+        self.state_machine.transition(Event::RunRight);
+    }
+
+    pub fn run_left(&mut self) {
+        self.state_machine.transition(Event::RunLeft);
     }
 }
 
@@ -74,6 +83,19 @@ impl RedHatBoyContext {
 
     fn reset_frame(&mut self) {
         self.frame = 0;
+    }
+
+    fn update_position(&mut self) {
+        self.position.x += self.velocity.x;
+        self.position.y += self.velocity.y;
+    }
+
+    fn run_right(&mut self) {
+        self.velocity.x = RUNNING_SPEED;
+    }
+
+    fn run_left(&mut self) {
+        self.velocity.x = -RUNNING_SPEED;
     }
 }
 
@@ -98,6 +120,7 @@ impl RedHatBoyState<Idle> {
 
     fn update(&mut self) {
         self.context.update_frame(IDLE_FRAME_COUNT);
+        self.context.update_position();
     }
 }
 
@@ -109,6 +132,7 @@ impl RedHatBoyState<Running> {
 
     fn update(&mut self) {
         self.context.update_frame(RUNNING_FRAME_COUNT);
+        self.context.update_position();
     }
 }
 
@@ -133,14 +157,10 @@ impl RedHatBoyStateMachine {
         }
     }
 
-    fn update(&mut self, keystate: &KeyState) {
+    fn update(&mut self) {
         match self {
             RedHatBoyStateMachine::Idle(ref mut state) => {
                 state.update();
-
-                if keystate.is_pressed("ArrowRight") {
-                    self.transition(Event::Run);
-                }
             }
             RedHatBoyStateMachine::Running(ref mut state) => {
                 state.update();
@@ -178,9 +198,32 @@ impl RedHatBoyState<Idle> {
 
 // 状態遷移を定義
 impl RedHatBoyState<Idle> {
-    fn run(&self) -> RedHatBoyState<Running> {
+    fn run_right(&self) -> RedHatBoyState<Running> {
         let mut context = self.context.clone();
         context.reset_frame();
+        context.run_right();
+        RedHatBoyState {
+            context: context,
+            _state: Running,
+        }
+    }
+}
+
+impl RedHatBoyState<Running> {
+    fn run_right(&self) -> RedHatBoyState<Running> {
+        let mut context = self.context.clone();
+        context.reset_frame();
+        context.run_right();
+        RedHatBoyState {
+            context: context,
+            _state: Running,
+        }
+    }
+
+    fn run_left(&self) -> RedHatBoyState<Running> {
+        let mut context = self.context.clone();
+        context.reset_frame();
+        context.run_left();
         RedHatBoyState {
             context: context,
             _state: Running,
@@ -190,14 +233,23 @@ impl RedHatBoyState<Idle> {
 
 // イベント
 enum Event {
-    Run,
+    RunRight,
+    RunLeft,
 }
 
 // イベントを受け取って状態遷移を行うメソッド
 impl RedHatBoyStateMachine {
     fn transition(&mut self, event: Event) {
         match (&self, event) {
-            (&RedHatBoyStateMachine::Idle(ref state), Event::Run) => *self = state.run().into(),
+            (&RedHatBoyStateMachine::Idle(ref state), Event::RunRight) => {
+                *self = state.run_right().into()
+            }
+            (&RedHatBoyStateMachine::Running(ref state), Event::RunLeft) => {
+                *self = state.run_left().into()
+            }
+            (&RedHatBoyStateMachine::Running(ref state), Event::RunRight) => {
+                *self = state.run_right().into()
+            }
             _ => {}
         };
     }
