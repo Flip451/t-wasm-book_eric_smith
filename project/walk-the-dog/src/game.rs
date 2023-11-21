@@ -8,14 +8,15 @@ use crate::{
     engine::{self, Game, Rect, Renderer},
 };
 
-use self::sprite::SpriteSheet;
+use self::{sprite::SpriteSheet, rhb::RedHatBoy};
 
 mod rhb;
 mod sprite;
 
 pub struct WalkTheDog {
-    image: Option<HtmlImageElement>,
-    sheet: Option<SpriteSheet>,
+    // image: Option<HtmlImageElement>,
+    // sheet: Option<SpriteSheet>,
+    rhb: Option<RedHatBoy>,
     frame: u8,
     position: Point,
 }
@@ -29,8 +30,9 @@ struct Point {
 impl WalkTheDog {
     pub fn new() -> Self {
         Self {
-            image: None,
-            sheet: None,
+            // image: None,
+            // sheet: None,
+            rhb: None,
             frame: 0,
             position: Point { x: 300., y: 300. },
         }
@@ -52,8 +54,9 @@ impl Game for WalkTheDog {
         let image = engine::load_image("rhb.png").await?;
 
         Ok(Box::new(WalkTheDog {
-            image: Some(image),
-            sheet: Some(sheet),
+            // image: Some(image),
+            // sheet: Some(sheet),
+            rhb: Some(RedHatBoy::new(sheet, image)),
             frame: self.frame,
             position: self.position,
         }))
@@ -83,16 +86,16 @@ impl Game for WalkTheDog {
     }
 
     fn draw(&self, renderer: &Renderer) {
-        let current_sprite = self.frame / 3 + 1;
-        let frame_name = format!("Run ({}).png", current_sprite);
+        // let current_sprite = self.frame / 3 + 1;
+        // let frame_name = format!("Run ({}).png", current_sprite);
         // シートの中から指定の画像（Run (*).png）の位置を取得
-        let sprite = self
-            .sheet
-            .as_ref()
-            .expect("Sheet not found")
-            .frames
-            .get(&frame_name)
-            .expect("Cell not found");
+        // let sprite = self
+        //     .sheet
+        //     .as_ref()
+        //     .expect("Sheet not found")
+        //     .frames
+        //     .get(&frame_name)
+        //     .expect("Cell not found");
         renderer.clear(&Rect {
             x: 0.,
             y: 0.,
@@ -101,10 +104,14 @@ impl Game for WalkTheDog {
         });
 
         // キャンバスに指定の画像を描画
-        renderer.draw_image(
-            self.image.as_ref().expect("Image not found"),
-            &sprite.to_rect_on_sheet(),
-            &sprite.to_rect_on_canvas(self.position.x, self.position.y),
-        );
+        // renderer.draw_image(
+        //     self.image.as_ref().expect("Image not found"),
+        //     &sprite.to_rect_on_sheet(),
+        //     &sprite.to_rect_on_canvas(self.position.x, self.position.y),
+        // );
+        self.rhb
+            .as_ref()
+            .expect("RedHatBoy not found")
+            .draw(renderer);
     }
 }
