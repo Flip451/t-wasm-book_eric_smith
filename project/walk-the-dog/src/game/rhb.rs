@@ -261,14 +261,35 @@ impl RedHatBoyState<Running> {
     }
 }
 
+enum SlidngEndState {
+    Sliding(RedHatBoyState<Sliding>),
+    Complete(RedHatBoyState<Running>),
+}
+
+impl From<SlidngEndState> for RedHatBoyStateMachine {
+    fn from(state: SlidngEndState) -> Self {
+        match state {
+            SlidngEndState::Sliding(state) => RedHatBoyStateMachine::Sliding(state),
+            SlidngEndState::Complete(state) => RedHatBoyStateMachine::Running(state),
+        }
+    }
+}
+
 impl RedHatBoyState<Sliding> {
-    fn update(&self) -> RedHatBoyState<Sliding> {
+    fn update(&self) -> SlidngEndState {
         let mut context = self.context.clone();
         context.update_frame(SLIDING_FRAME_COUNT);
         context.update_position();
-        RedHatBoyState {
-            context,
-            _state: Sliding,
+        if context.frame == 0 {
+            SlidngEndState::Complete(RedHatBoyState {
+                context,
+                _state: Running,
+            })
+        } else {
+            SlidngEndState::Sliding(RedHatBoyState {
+                context,
+                _state: Sliding,
+            })
         }
     }
 }
