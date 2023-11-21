@@ -63,7 +63,7 @@ pub struct GameLoop {
     accumulated_delta: f32,
 }
 
-type SharedLoopClosure = Rc<RefCell<Option<LoopClosure<f64>>>>;
+type SharedLoopClosure = Rc<RefCell<Option<LoopClosure>>>;
 
 impl GameLoop {
     pub async fn start(game: impl Game + 'static) -> Result<()> {
@@ -96,7 +96,7 @@ impl GameLoop {
         let f: SharedLoopClosure = Rc::new(RefCell::new(None));
         let g = f.clone();
 
-        *g.borrow_mut() = Some(browser::create_raf_closure(move |perf: f64| {
+        *g.borrow_mut() = Some(browser::create_wasm_closure(move |perf: f64| {
             // perf は、このコールバック関数が呼び出された時点の performance.now() の値（＝その時点の時刻）
             // この値を用いて、前回のフレームからの経過時間を計算し、それを累積時間に加算する
             game_loop.accumulated_delta += (perf - game_loop.last_frame) as f32;
@@ -183,14 +183,14 @@ fn prepare_input() -> Result<UnboundedReceiver<KeyPress>> {
 
     let canvas = browser::canvas().expect("Canvas not found");
 
-    let onkeydown = browser::create_raf_closure(move |keycode: web_sys::KeyboardEvent| {
+    let onkeydown = browser::create_wasm_closure(move |keycode: web_sys::KeyboardEvent| {
         keydown_tx
             .borrow_mut()
             .start_send(KeyPress::KeyDown(keycode));
     });
     canvas.set_onkeydown(Some(onkeydown.as_ref().unchecked_ref()));
 
-    let onkeyup = browser::create_raf_closure(move |keycode: web_sys::KeyboardEvent| {
+    let onkeyup = browser::create_wasm_closure(move |keycode: web_sys::KeyboardEvent| {
         keyup_tx.borrow_mut().start_send(KeyPress::KeyUp(keycode));
     });
     canvas.set_onkeyup(Some(onkeyup.as_ref().unchecked_ref()));
