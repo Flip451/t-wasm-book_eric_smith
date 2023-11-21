@@ -1,9 +1,6 @@
-use std::collections::HashMap;
-
 use anyhow::Result;
 use async_trait::async_trait;
 use gloo_utils::format::JsValueSerdeExt;
-use serde::Deserialize;
 use web_sys::HtmlImageElement;
 
 use crate::{
@@ -11,27 +8,14 @@ use crate::{
     engine::{self, Game, Rect, Renderer},
 };
 
-#[derive(Deserialize)]
-struct SheetRect {
-    x: i16,
-    y: i16,
-    w: i16,
-    h: i16,
-}
+use self::sprite::SpriteSheet;
 
-#[derive(Deserialize)]
-struct Cell {
-    frame: SheetRect,
-}
-
-#[derive(Deserialize)]
-pub struct Sheet {
-    frames: HashMap<String, Cell>,
-}
+mod rhb;
+mod sprite;
 
 pub struct WalkTheDog {
     image: Option<HtmlImageElement>,
-    sheet: Option<Sheet>,
+    sheet: Option<SpriteSheet>,
     frame: u8,
     position: Point,
 }
@@ -63,7 +47,7 @@ impl Game for WalkTheDog {
         // この部分の実装は
         // <https://rustwasm.github.io/wasm-bindgen/reference/arbitrary-data-with-serde.html#an-alternative-approach---using-json>
         // を参考にした
-        let sheet: Sheet = json.into_serde()?;
+        let sheet: SpriteSheet = json.into_serde()?;
 
         let image = engine::load_image("rhb.png").await?;
 
@@ -119,18 +103,8 @@ impl Game for WalkTheDog {
         // キャンバスに指定の画像を描画
         renderer.draw_image(
             self.image.as_ref().expect("Image not found"),
-            &Rect {
-                x: sprite.frame.x as f32,
-                y: sprite.frame.y as f32,
-                w: sprite.frame.w as f32,
-                h: sprite.frame.h as f32,
-            },
-            &Rect {
-                x: self.position.x,
-                y: self.position.y,
-                w: sprite.frame.w as f32,
-                h: sprite.frame.h as f32,
-            },
+            &sprite.to_rect_on_sheet(),
+            &sprite.to_rect_on_canvas(self.position.x, self.position.y),
         );
     }
 }
