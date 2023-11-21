@@ -228,7 +228,7 @@ impl RedHatBoyState<Idle> {
 
 // 状態遷移を定義
 impl RedHatBoyState<Idle> {
-    fn run_right(&self) -> RedHatBoyState<Running> {
+    fn start_run(&self) -> RedHatBoyState<Running> {
         let mut context = self.context.clone();
         context.reset_frame();
         context.run_right();
@@ -282,7 +282,7 @@ impl RedHatBoyStateMachine {
     fn transition(&mut self, event: Event) {
         match (&self, event) {
             (&RedHatBoyStateMachine::Idle(ref state), Event::RunRight) => {
-                *self = state.run_right().into()
+                *self = state.start_run().into()
             }
             (&RedHatBoyStateMachine::Running(ref state), Event::RunLeft) => {
                 *self = state.run_left().into()
