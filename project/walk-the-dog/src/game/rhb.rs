@@ -58,7 +58,7 @@ impl RedHatBoy {
     }
 
     pub fn update(&mut self) {
-        self.state_machine.update();
+        self.state_machine.transition(Event::Update);
     }
 
     pub fn run_right(&mut self) {
@@ -123,11 +123,6 @@ impl RedHatBoyState<Idle> {
     fn frame_name(&self) -> &str {
         IDLE_FRAME_NAME
     }
-
-    fn update(&mut self) {
-        self.context.update_frame(IDLE_FRAME_COUNT);
-        self.context.update_position();
-    }
 }
 
 struct Running;
@@ -135,22 +130,12 @@ impl RedHatBoyState<Running> {
     fn frame_name(&self) -> &str {
         RUNNING_FRAME_NAME
     }
-
-    fn update(&mut self) {
-        self.context.update_frame(RUNNING_FRAME_COUNT);
-        self.context.update_position();
-    }
 }
 
 struct Sliding;
 impl RedHatBoyState<Sliding> {
     fn frame_name(&self) -> &str {
         SLIDING_FRAME_NAME
-    }
-
-    fn update(&mut self) {
-        self.context.update_frame(SLIDING_FRAME_COUNT);
-        self.context.update_position();
     }
 }
 
@@ -175,20 +160,6 @@ impl RedHatBoyStateMachine {
             RedHatBoyStateMachine::Idle(state) => &state.context(),
             RedHatBoyStateMachine::Running(state) => &state.context(),
             RedHatBoyStateMachine::Sliding(state) => &state.context(),
-        }
-    }
-
-    fn update(&mut self) {
-        match self {
-            RedHatBoyStateMachine::Idle(ref mut state) => {
-                state.update();
-            }
-            RedHatBoyStateMachine::Running(ref mut state) => {
-                state.update();
-            }
-            RedHatBoyStateMachine::Sliding(ref mut state) => {
-                state.update();
-            }
         }
     }
 }
@@ -228,24 +199,44 @@ impl RedHatBoyState<Idle> {
 
 // 状態遷移を定義
 impl RedHatBoyState<Idle> {
+    fn update(&self) -> RedHatBoyState<Idle> {
+        let mut context = self.context.clone();
+        context.update_frame(IDLE_FRAME_COUNT);
+        context.update_position();
+        RedHatBoyState {
+            context,
+            _state: Idle,
+        }
+    }
+
     fn start_run(&self) -> RedHatBoyState<Running> {
         let mut context = self.context.clone();
         context.reset_frame();
         context.run_right();
         RedHatBoyState {
-            context: context,
+            context,
             _state: Running,
         }
     }
 }
 
 impl RedHatBoyState<Running> {
+    fn update(&self) -> RedHatBoyState<Running> {
+        let mut context = self.context.clone();
+        context.update_frame(RUNNING_FRAME_COUNT);
+        context.update_position();
+        RedHatBoyState {
+            context,
+            _state: Running,
+        }
+    }
+
     fn run_right(&self) -> RedHatBoyState<Running> {
         let mut context = self.context.clone();
         context.reset_frame();
         context.run_right();
         RedHatBoyState {
-            context: context,
+            context,
             _state: Running,
         }
     }
@@ -255,7 +246,7 @@ impl RedHatBoyState<Running> {
         context.reset_frame();
         context.run_left();
         RedHatBoyState {
-            context: context,
+            context,
             _state: Running,
         }
     }
@@ -264,7 +255,19 @@ impl RedHatBoyState<Running> {
         let mut context = self.context.clone();
         context.reset_frame();
         RedHatBoyState {
-            context: context,
+            context,
+            _state: Sliding,
+        }
+    }
+}
+
+impl RedHatBoyState<Sliding> {
+    fn update(&self) -> RedHatBoyState<Sliding> {
+        let mut context = self.context.clone();
+        context.update_frame(SLIDING_FRAME_COUNT);
+        context.update_position();
+        RedHatBoyState {
+            context,
             _state: Sliding,
         }
     }
@@ -275,23 +278,33 @@ enum Event {
     RunRight,
     RunLeft,
     Slide,
+    Update,
 }
 
 // イベントを受け取って状態遷移を行うメソッド
 impl RedHatBoyStateMachine {
     fn transition(&mut self, event: Event) {
         match (&self, event) {
-            (&RedHatBoyStateMachine::Idle(ref state), Event::RunRight) => {
+            (RedHatBoyStateMachine::Idle(ref state), Event::RunRight) => {
                 *self = state.start_run().into()
             }
-            (&RedHatBoyStateMachine::Running(ref state), Event::RunLeft) => {
+            (RedHatBoyStateMachine::Running(ref state), Event::RunLeft) => {
                 *self = state.run_left().into()
             }
-            (&RedHatBoyStateMachine::Running(ref state), Event::RunRight) => {
+            (RedHatBoyStateMachine::Running(ref state), Event::RunRight) => {
                 *self = state.run_right().into()
             }
-            (&RedHatBoyStateMachine::Running(ref state), Event::Slide) => {
+            (RedHatBoyStateMachine::Running(ref state), Event::Slide) => {
                 *self = state.slide().into()
+            }
+            (RedHatBoyStateMachine::Idle(ref state), Event::Update) => {
+                *self = state.update().into()
+            }
+            (RedHatBoyStateMachine::Running(ref state), Event::Update) => {
+                *self = state.update().into()
+            }
+            (RedHatBoyStateMachine::Sliding(ref state), Event::Update) => {
+                *self = state.update().into()
             }
             _ => {}
         };
