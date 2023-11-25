@@ -7,7 +7,7 @@ use crate::engine::{
     Game,
 };
 
-use self::{background::Background, rhb::RedHatBoy};
+use self::{background::Background, rhb::RedHatBoy, objects::GameObject};
 
 mod background;
 mod objects;

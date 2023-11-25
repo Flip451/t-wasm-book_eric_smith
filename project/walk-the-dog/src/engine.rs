@@ -237,6 +237,18 @@ pub mod renderer {
             pub fn draw(&self, renderer: &Renderer) -> Result<()> {
                 renderer.draw_entire_image(&self.element, &self.position)
             }
+
+            pub fn position(&self) -> &Point {
+                &self.position
+            }
+
+            pub fn width(&self) -> f32 {
+                self.element.width() as f32
+            }
+
+            pub fn height(&self) -> f32 {
+                self.element.height() as f32
+            }
         }
     }
 }
