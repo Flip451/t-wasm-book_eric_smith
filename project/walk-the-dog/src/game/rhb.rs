@@ -1,12 +1,14 @@
 use anyhow::Result;
+use async_trait::async_trait;
 use gloo_utils::format::JsValueSerdeExt;
 use web_sys::HtmlImageElement;
 
 use crate::browser;
-use crate::engine::renderer::{image, Renderer};
+use crate::engine::renderer::{image, Rect, Renderer};
 
 use self::red_hat_boy_states::*;
-use super::sprite::SpriteSheet;
+use super::objects::GameObject;
+use super::sprite::{Cell, SpriteSheet};
 
 pub struct RedHatBoy {
     state_machine: RedHatBoyStateMachine,
@@ -14,8 +16,9 @@ pub struct RedHatBoy {
     image: HtmlImageElement,
 }
 
-impl RedHatBoy {
-    pub async fn new() -> Result<Self> {
+#[async_trait(?Send)]
+impl GameObject for RedHatBoy {
+    async fn new() -> Result<Self> {
         let json = browser::fetch_json("rhb.json").await?;
 
         // json を Sheet 型に変換
@@ -34,19 +37,21 @@ impl RedHatBoy {
         })
     }
 
-    pub fn draw(&self, renderer: &Renderer) -> Result<()>{
-        let frame_name = format!(
-            "{} ({}).png",
-            self.state_machine.frame_name(),
-            self.state_machine.context().frame / 3 + 1
-        );
+    fn bounding_box(&self) -> Rect {
+        let sprite = self.current_sprite();
+        sprite.to_rect_on_canvas(
+            self.state_machine.context().position.x,
+            self.state_machine.context().position.y,
+        )
+    }
 
+    fn draw(&self, renderer: &Renderer) -> Result<()> {
         // シートの中から指定の画像（Run (*).png）の位置を取得
-        let sprite = self
-            .sprite_sheet
-            .frames
-            .get(&frame_name)
-            .expect("Cell not found");
+        let sprite = self.current_sprite();
+
+        // キャンバスに bounding box を描画
+        #[cfg(feature = "collision_debug")]
+        renderer.draw_rect(&self.bounding_box());
 
         // キャンバスに指定の画像を描画
         renderer.draw_image(
@@ -57,6 +62,26 @@ impl RedHatBoy {
                 self.state_machine.context().position.y,
             ),
         )
+    }
+}
+
+impl RedHatBoy {
+    fn frame_name(&self) -> String {
+        format!(
+            "{} ({}).png",
+            self.state_machine.frame_name(),
+            self.state_machine.context().frame / 3 + 1
+        )
+    }
+
+    fn current_sprite(&self) -> &Cell {
+        let frame_name = self.frame_name();
+
+        // シートの中から指定の画像（Run (*).png）の位置を取得
+        self.sprite_sheet
+            .frames
+            .get(&frame_name)
+            .expect("Cell not found")
     }
 
     pub fn update(&mut self) {
@@ -78,6 +103,10 @@ impl RedHatBoy {
     pub fn jump(&mut self) {
         self.state_machine.transition(Event::Jump);
     }
+
+    pub fn knock_out(&mut self) {
+        self.state_machine.transition(Event::KnockOut);
+    }
 }
 
 // ステートマシーン本体
@@ -86,6 +115,8 @@ enum RedHatBoyStateMachine {
     Running(RedHatBoyState<Running>),
     Sliding(RedHatBoyState<Sliding>),
     Jumping(RedHatBoyState<Jumping>),
+    Falling(RedHatBoyState<Falling>),
+    KnockedOut(RedHatBoyState<KnockedOut>),
 }
 
 impl RedHatBoyStateMachine {
@@ -95,6 +126,8 @@ impl RedHatBoyStateMachine {
             RedHatBoyStateMachine::Running(state) => state.frame_name(),
             RedHatBoyStateMachine::Sliding(state) => state.frame_name(),
             RedHatBoyStateMachine::Jumping(state) => state.frame_name(),
+            RedHatBoyStateMachine::Falling(state) => state.frame_name(),
+            RedHatBoyStateMachine::KnockedOut(state) => state.frame_name(),
         }
     }
 
@@ -104,6 +137,8 @@ impl RedHatBoyStateMachine {
             RedHatBoyStateMachine::Running(state) => &state.context(),
             RedHatBoyStateMachine::Sliding(state) => &state.context(),
             RedHatBoyStateMachine::Jumping(state) => &state.context(),
+            RedHatBoyStateMachine::Falling(state) => &state.context(),
+            RedHatBoyStateMachine::KnockedOut(state) => &state.context(),
         }
     }
 
@@ -124,6 +159,16 @@ impl RedHatBoyStateMachine {
                 *self = state.slide().into()
             }
             (RedHatBoyStateMachine::Running(ref state), Event::Jump) => *self = state.jump().into(),
+            // 衝突による状態遷移
+            (RedHatBoyStateMachine::Running(ref state), Event::KnockOut) => {
+                *self = state.knock_out().into()
+            }
+            (RedHatBoyStateMachine::Sliding(ref state), Event::KnockOut) => {
+                *self = state.knock_out().into()
+            }
+            (RedHatBoyStateMachine::Jumping(ref state), Event::KnockOut) => {
+                *self = state.knock_out().into()
+            }
             // 時間経過による update 処理
             (RedHatBoyStateMachine::Idle(ref state), Event::Update) => {
                 *self = state.update().into()
@@ -135,6 +180,9 @@ impl RedHatBoyStateMachine {
                 *self = state.update().into()
             }
             (RedHatBoyStateMachine::Jumping(ref state), Event::Update) => {
+                *self = state.update().into()
+            }
+            (RedHatBoyStateMachine::Falling(ref state), Event::Update) => {
                 *self = state.update().into()
             }
             _ => {}
@@ -167,6 +215,12 @@ impl From<RedHatBoyState<Jumping>> for RedHatBoyStateMachine {
     }
 }
 
+impl From<RedHatBoyState<Falling>> for RedHatBoyStateMachine {
+    fn from(state: RedHatBoyState<Falling>) -> Self {
+        RedHatBoyStateMachine::Falling(state)
+    }
+}
+
 impl From<SlidngEndState> for RedHatBoyStateMachine {
     fn from(state: SlidngEndState) -> Self {
         match state {
@@ -185,6 +239,15 @@ impl From<JumpEndState> for RedHatBoyStateMachine {
     }
 }
 
+impl From<FallingEndState> for RedHatBoyStateMachine {
+    fn from(state: FallingEndState) -> Self {
+        match state {
+            FallingEndState::Falling(state) => RedHatBoyStateMachine::Falling(state),
+            FallingEndState::Complete(state) => RedHatBoyStateMachine::KnockedOut(state),
+        }
+    }
+}
+
 // イベント
 enum Event {
     RunRight,
@@ -192,13 +255,15 @@ enum Event {
     Slide,
     Jump,
     Update,
+    KnockOut,
 }
 
 mod red_hat_boy_states {
     use crate::engine::renderer::Point;
 
     // 座標系関連
-    const FLOOR: f32 = 475.;
+    const STARTING_POINT: f32 = -20.;
+    const FLOOR: f32 = 479.;
     const RUNNING_SPEED: f32 = 3.;
     const JUMP_SPEED: f32 = -25.;
     const GRAVITY: f32 = 1.;
@@ -208,12 +273,14 @@ mod red_hat_boy_states {
     const RUNNING_FRAME_NAME: &str = "Run";
     const SLIDING_FRAME_NAME: &str = "Slide";
     const JUMPING_FRAME_NAME: &str = "Jump";
+    const FALLING_FRAME_NAME: &str = "Dead";
 
     // フレーム数
     const IDLE_FRAME_COUNT: u8 = 29;
     const RUNNING_FRAME_COUNT: u8 = 24;
     const SLIDING_FRAME_COUNT: u8 = 14;
     const JUMPING_FRAME_COUNT: u8 = 35;
+    const FALLING_FRAME_COUNT: u8 = 29;
 
     // RHB の状態を表す構造体
     pub(super) struct RedHatBoyState<S> {
@@ -253,6 +320,20 @@ mod red_hat_boy_states {
     impl RedHatBoyState<Jumping> {
         pub(super) fn frame_name(&self) -> &str {
             JUMPING_FRAME_NAME
+        }
+    }
+
+    pub(super) struct Falling;
+    impl RedHatBoyState<Falling> {
+        pub(super) fn frame_name(&self) -> &str {
+            FALLING_FRAME_NAME
+        }
+    }
+
+    pub(super) struct KnockedOut;
+    impl RedHatBoyState<KnockedOut> {
+        pub(super) fn frame_name(&self) -> &str {
+            FALLING_FRAME_NAME
         }
     }
 
@@ -298,6 +379,11 @@ mod red_hat_boy_states {
         fn fall(&mut self) {
             self.velocity.y += GRAVITY;
         }
+
+        fn stop(&mut self) {
+            self.velocity.x = 0.;
+            self.velocity.y = 0.
+        }
     }
 
     // 初期状態の定義
@@ -306,7 +392,10 @@ mod red_hat_boy_states {
             Self {
                 context: RedHatBoyContext {
                     frame: 0,
-                    position: Point { x: 0., y: FLOOR },
+                    position: Point {
+                        x: STARTING_POINT,
+                        y: FLOOR,
+                    },
                     velocity: Point { x: 0., y: 0. },
                 },
                 _state: Idle,
@@ -386,6 +475,16 @@ mod red_hat_boy_states {
                 _state: Jumping,
             }
         }
+
+        pub(super) fn knock_out(&self) -> RedHatBoyState<Falling> {
+            let mut context = self.context.clone();
+            context.reset_frame();
+            context.stop();
+            RedHatBoyState {
+                context,
+                _state: Falling,
+            }
+        }
     }
 
     pub(super) enum SlidngEndState {
@@ -408,6 +507,16 @@ mod red_hat_boy_states {
                     context,
                     _state: Sliding,
                 })
+            }
+        }
+
+        pub(super) fn knock_out(&self) -> RedHatBoyState<Falling> {
+            let mut context = self.context.clone();
+            context.reset_frame();
+            context.stop();
+            RedHatBoyState {
+                context,
+                _state: Falling,
             }
         }
     }
@@ -433,6 +542,39 @@ mod red_hat_boy_states {
                 JumpEndState::Jumping(RedHatBoyState {
                     context,
                     _state: Jumping,
+                })
+            }
+        }
+        pub(super) fn knock_out(&self) -> RedHatBoyState<Falling> {
+            let mut context = self.context.clone();
+            context.reset_frame();
+            context.stop();
+            RedHatBoyState {
+                context,
+                _state: Falling,
+            }
+        }
+    }
+
+    pub(super) enum FallingEndState {
+        Falling(RedHatBoyState<Falling>),
+        Complete(RedHatBoyState<KnockedOut>),
+    }
+
+    impl RedHatBoyState<Falling> {
+        pub(super) fn update(&self) -> FallingEndState {
+            let mut context = self.context.clone();
+            context.update_frame(FALLING_FRAME_COUNT);
+            context.update_position();
+            if context.frame == FALLING_FRAME_COUNT - 1 {
+                FallingEndState::Complete(RedHatBoyState {
+                    context,
+                    _state: KnockedOut,
+                })
+            } else {
+                FallingEndState::Falling(RedHatBoyState {
+                    context,
+                    _state: Falling,
                 })
             }
         }

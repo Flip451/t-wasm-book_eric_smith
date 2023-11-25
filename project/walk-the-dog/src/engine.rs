@@ -108,6 +108,16 @@ pub mod renderer {
                 .clear_rect(rect.x.into(), rect.y.into(), rect.w.into(), rect.h.into());
         }
 
+        pub fn draw_rect(&self, rect: &Rect) {
+            self.context
+                .begin_path();
+            self.context
+                .set_stroke_style(&"red".into());
+            self.context
+                .rect(rect.x.into(), rect.y.into(), rect.w.into(), rect.h.into());
+            self.context.stroke();
+        }
+
         pub fn draw_image(
             &self,
             image: &HtmlImageElement,
@@ -140,11 +150,21 @@ pub mod renderer {
         }
     }
 
+    #[derive(Clone)]
     pub struct Rect {
         pub x: f32,
         pub y: f32,
         pub w: f32,
         pub h: f32,
+    }
+
+    impl Rect {
+        pub fn intersects(&self, other: &Rect) -> bool {
+            self.x < other.x + other.w
+                && self.x + self.w > other.x
+                && self.y < other.y + other.h
+                && self.y + self.h > other.y
+        }
     }
 
     #[derive(Clone, Copy)]
@@ -213,6 +233,18 @@ pub mod renderer {
             // Renderer 上に画像を実体化する
             pub fn draw(&self, renderer: &Renderer) -> Result<()> {
                 renderer.draw_entire_image(&self.element, &self.position)
+            }
+
+            pub fn position(&self) -> &Point {
+                &self.position
+            }
+
+            pub fn width(&self) -> f32 {
+                self.element.width() as f32
+            }
+
+            pub fn height(&self) -> f32 {
+                self.element.height() as f32
             }
         }
     }
