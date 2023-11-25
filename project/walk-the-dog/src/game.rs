@@ -1,20 +1,26 @@
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use gloo_utils::format::JsValueSerdeExt;
 
-use crate::{
-    browser,
-    engine::{self, Game, Rect, Renderer},
+use crate::engine::{
+    key_state::KeyState,
+    renderer::{Rect, Renderer},
+    Game,
 };
 
-use self::{rhb::RedHatBoy, sprite::SpriteSheet};
+use self::{background::Background, rhb::RedHatBoy};
 
+mod background;
 mod rhb;
 mod sprite;
 
 pub enum WalkTheDog {
     Loading,
-    Loaded(RedHatBoy),
+    Loaded(Walk),
+}
+
+pub struct Walk {
+    rhb: RedHatBoy,
+    background: Background,
 }
 
 impl WalkTheDog {
@@ -28,28 +34,18 @@ impl Game for WalkTheDog {
     async fn initialize(&self) -> Result<Box<dyn Game>> {
         match self {
             Self::Loading => {
-                let json = browser::fetch_json("rhb.json").await?;
-
-                // json を Sheet 型に変換
-                // この際、JsValue 型の json を serde を用いてデシリアライズ
-                // この部分の実装は
-                // <https://rustwasm.github.io/wasm-bindgen/reference/arbitrary-data-with-serde.html#an-alternative-approach---using-json>
-                // を参考にした
-                let sheet: SpriteSheet = json.into_serde()?;
-
-                let image = engine::load_image("rhb.png").await?;
-                let rhb = RedHatBoy::new(sheet, image);
-
-                Ok(Box::new(WalkTheDog::Loaded(rhb)))
+                let rhb = RedHatBoy::new().await?;
+                let background = Background::new().await?;
+                Ok(Box::new(WalkTheDog::Loaded(Walk { rhb, background })))
             }
             Self::Loaded(_) => Err(anyhow!("Error: Game is already initialized")),
         }
     }
 
-    fn update(&mut self, keystate: &engine::KeyState) {
+    fn update(&mut self, keystate: &KeyState) {
         match self {
             Self::Loading => {}
-            Self::Loaded(rhb) => {
+            Self::Loaded(Walk { rhb, background: _ }) => {
                 rhb.update();
 
                 if keystate.is_pressed("ArrowRight") {
@@ -73,8 +69,8 @@ impl Game for WalkTheDog {
 
     fn draw(&self, renderer: &Renderer) {
         match self {
-            WalkTheDog::Loading => {},
-            WalkTheDog::Loaded(rhb) => {
+            WalkTheDog::Loading => {}
+            WalkTheDog::Loaded(Walk { rhb, background }) => {
                 renderer.clear(&Rect {
                     x: 0.,
                     y: 0.,
@@ -82,7 +78,8 @@ impl Game for WalkTheDog {
                     h: 600.,
                 });
 
-                rhb.draw(renderer);
+                background.draw(renderer).expect("Error drawing background");
+                rhb.draw(renderer).expect("Error drawing red hat boy");
             }
         }
     }

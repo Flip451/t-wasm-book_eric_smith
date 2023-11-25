@@ -1,7 +1,7 @@
 use serde::Deserialize;
 use std::collections::HashMap;
 
-use crate::engine::Rect;
+use crate::engine::renderer::Rect;
 
 #[derive(Deserialize)]
 struct SheetRect {
