@@ -3,14 +3,11 @@ use async_trait::async_trait;
 
 use crate::engine::{
     key_state::KeyState,
-    renderer::{
-        image::{self, Image},
-        Point, Rect, Renderer,
-    },
+    renderer::{Rect, Renderer},
     Game,
 };
 
-use self::{rhb::RedHatBoy, background::Background};
+use self::{background::Background, rhb::RedHatBoy};
 
 mod background;
 mod rhb;
@@ -81,8 +78,8 @@ impl Game for WalkTheDog {
                     h: 600.,
                 });
 
-                background.draw(renderer);
-                rhb.draw(renderer);
+                background.draw(renderer).expect("Error drawing background");
+                rhb.draw(renderer).expect("Error drawing red hat boy");
             }
         }
     }

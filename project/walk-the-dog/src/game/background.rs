@@ -2,7 +2,7 @@ use anyhow::Result;
 
 use crate::engine::renderer::{
     image::{self, Image},
-    Renderer, Point,
+    Point, Renderer,
 };
 
 pub struct Background {
@@ -16,7 +16,7 @@ impl Background {
         Ok(Self { image })
     }
 
-    pub fn draw(&self, renderer: &Renderer) {
-        self.image.draw(renderer);
+    pub fn draw(&self, renderer: &Renderer) -> Result<()> {
+        self.image.draw(renderer)
     }
 }

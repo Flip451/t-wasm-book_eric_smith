@@ -34,7 +34,7 @@ impl RedHatBoy {
         })
     }
 
-    pub fn draw(&self, renderer: &Renderer) {
+    pub fn draw(&self, renderer: &Renderer) -> Result<()>{
         let frame_name = format!(
             "{} ({}).png",
             self.state_machine.frame_name(),
@@ -56,7 +56,7 @@ impl RedHatBoy {
                 self.state_machine.context().position.x,
                 self.state_machine.context().position.y,
             ),
-        );
+        )
     }
 
     pub fn update(&mut self) {
