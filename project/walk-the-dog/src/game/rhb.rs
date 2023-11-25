@@ -1,6 +1,9 @@
+use anyhow::Result;
+use gloo_utils::format::JsValueSerdeExt;
 use web_sys::HtmlImageElement;
 
-use crate::engine::renderer::Renderer;
+use crate::browser;
+use crate::engine::renderer::{image, Renderer};
 
 use self::red_hat_boy_states::*;
 use super::sprite::SpriteSheet;
@@ -12,12 +15,23 @@ pub struct RedHatBoy {
 }
 
 impl RedHatBoy {
-    pub fn new(sprite_sheet: SpriteSheet, image: HtmlImageElement) -> Self {
-        Self {
+    pub async fn new() -> Result<Self> {
+        let json = browser::fetch_json("rhb.json").await?;
+
+        // json を Sheet 型に変換
+        // この際、JsValue 型の json を serde を用いてデシリアライズ
+        // この部分の実装は
+        // <https://rustwasm.github.io/wasm-bindgen/reference/arbitrary-data-with-serde.html#an-alternative-approach---using-json>
+        // を参考にした
+        let sprite_sheet: SpriteSheet = json.into_serde()?;
+
+        let image = image::load_image("rhb.png").await?;
+
+        Ok(Self {
             state_machine: RedHatBoyStateMachine::Idle(RedHatBoyState::<Idle>::new()),
             sprite_sheet,
             image,
-        }
+        })
     }
 
     pub fn draw(&self, renderer: &Renderer) {
@@ -181,7 +195,7 @@ enum Event {
 }
 
 mod red_hat_boy_states {
-    use crate::engine::Point;
+    use crate::engine::renderer::Point;
 
     // 座標系関連
     const FLOOR: f32 = 475.;

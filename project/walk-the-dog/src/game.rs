@@ -1,15 +1,13 @@
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use gloo_utils::format::JsValueSerdeExt;
 
-use crate::browser;
 use crate::engine::{
-    self,
+    key_state::KeyState,
     renderer::{Rect, Renderer},
     Game,
 };
 
-use self::{rhb::RedHatBoy, sprite::SpriteSheet};
+use self::rhb::RedHatBoy;
 
 mod rhb;
 mod sprite;
@@ -30,25 +28,14 @@ impl Game for WalkTheDog {
     async fn initialize(&self) -> Result<Box<dyn Game>> {
         match self {
             Self::Loading => {
-                let json = browser::fetch_json("rhb.json").await?;
-
-                // json を Sheet 型に変換
-                // この際、JsValue 型の json を serde を用いてデシリアライズ
-                // この部分の実装は
-                // <https://rustwasm.github.io/wasm-bindgen/reference/arbitrary-data-with-serde.html#an-alternative-approach---using-json>
-                // を参考にした
-                let sheet: SpriteSheet = json.into_serde()?;
-
-                let image = engine::load_image("rhb.png").await?;
-                let rhb = RedHatBoy::new(sheet, image);
-
+                let rhb = RedHatBoy::new().await?;
                 Ok(Box::new(WalkTheDog::Loaded(rhb)))
             }
             Self::Loaded(_) => Err(anyhow!("Error: Game is already initialized")),
         }
     }
 
-    fn update(&mut self, keystate: &engine::KeyState) {
+    fn update(&mut self, keystate: &KeyState) {
         match self {
             Self::Loading => {}
             Self::Loaded(rhb) => {
