@@ -1,12 +1,14 @@
 use anyhow::Result;
+use async_trait::async_trait;
 use gloo_utils::format::JsValueSerdeExt;
 use web_sys::HtmlImageElement;
 
 use crate::browser;
-use crate::engine::renderer::{image, Renderer};
+use crate::engine::renderer::{image, Rect, Renderer};
 
 use self::red_hat_boy_states::*;
-use super::sprite::SpriteSheet;
+use super::objects::GameObject;
+use super::sprite::{Cell, SpriteSheet};
 
 pub struct RedHatBoy {
     state_machine: RedHatBoyStateMachine,
@@ -14,8 +16,9 @@ pub struct RedHatBoy {
     image: HtmlImageElement,
 }
 
-impl RedHatBoy {
-    pub async fn new() -> Result<Self> {
+#[async_trait(?Send)]
+impl GameObject for RedHatBoy {
+    async fn new() -> Result<Self> {
         let json = browser::fetch_json("rhb.json").await?;
 
         // json を Sheet 型に変換
@@ -34,19 +37,21 @@ impl RedHatBoy {
         })
     }
 
-    pub fn draw(&self, renderer: &Renderer) -> Result<()>{
-        let frame_name = format!(
-            "{} ({}).png",
-            self.state_machine.frame_name(),
-            self.state_machine.context().frame / 3 + 1
-        );
+    fn bounding_box(&self) -> Rect {
+        let sprite = self.current_sprite();
+        sprite.to_rect_on_canvas(
+            self.state_machine.context().position.x,
+            self.state_machine.context().position.y,
+        )
+    }
 
+    fn draw(&self, renderer: &Renderer) -> Result<()> {
         // シートの中から指定の画像（Run (*).png）の位置を取得
-        let sprite = self
-            .sprite_sheet
-            .frames
-            .get(&frame_name)
-            .expect("Cell not found");
+        let sprite = self.current_sprite();
+
+        // キャンバスに bounding box を描画
+        #[cfg(feature = "collision_debug")]
+        renderer.draw_rect(&self.bounding_box());
 
         // キャンバスに指定の画像を描画
         renderer.draw_image(
@@ -57,6 +62,26 @@ impl RedHatBoy {
                 self.state_machine.context().position.y,
             ),
         )
+    }
+}
+
+impl RedHatBoy {
+    fn frame_name(&self) -> String {
+        format!(
+            "{} ({}).png",
+            self.state_machine.frame_name(),
+            self.state_machine.context().frame / 3 + 1
+        )
+    }
+
+    fn current_sprite(&self) -> &Cell {
+        let frame_name = self.frame_name();
+
+        // シートの中から指定の画像（Run (*).png）の位置を取得
+        self.sprite_sheet
+            .frames
+            .get(&frame_name)
+            .expect("Cell not found")
     }
 
     pub fn update(&mut self) {
@@ -307,7 +332,10 @@ mod red_hat_boy_states {
             Self {
                 context: RedHatBoyContext {
                     frame: 0,
-                    position: Point { x: STARTING_POINT, y: FLOOR },
+                    position: Point {
+                        x: STARTING_POINT,
+                        y: FLOOR,
+                    },
                     velocity: Point { x: 0., y: 0. },
                 },
                 _state: Idle,

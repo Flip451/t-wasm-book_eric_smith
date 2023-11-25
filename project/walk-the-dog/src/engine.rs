@@ -108,6 +108,16 @@ pub mod renderer {
                 .clear_rect(rect.x.into(), rect.y.into(), rect.w.into(), rect.h.into());
         }
 
+        pub fn draw_rect(&self, rect: &Rect) {
+            self.context
+                .begin_path();
+            self.context
+                .set_stroke_style(&"red".into());
+            self.context
+                .rect(rect.x.into(), rect.y.into(), rect.w.into(), rect.h.into());
+            self.context.stroke();
+        }
+
         pub fn draw_image(
             &self,
             image: &HtmlImageElement,
@@ -128,19 +138,6 @@ pub mod renderer {
                 )
                 .map_err(|js_value| anyhow!("Error drawing image {:#?}", js_value))?;
 
-            #[cfg(feature = "collision_debug")]
-            {
-                self.context.begin_path();
-                self.context.set_stroke_style(&"red".into());
-                self.context.rect(
-                    destination.x.into(),
-                    destination.y.into(),
-                    destination.w.into(),
-                    destination.h.into(),
-                );
-                self.context.stroke();
-            }
-
             Ok(())
         }
 
@@ -149,20 +146,11 @@ pub mod renderer {
                 .draw_image_with_html_image_element(&image, position.x as f64, position.y as f64)
                 .map_err(|js_value| anyhow!("Error drawing image {:#?}", js_value))?;
 
-            #[cfg(feature = "collision_debug")]
-            {
-                let w = image.width() as f64;
-                let h = image.height() as f64;
-                self.context.begin_path();
-                self.context
-                    .rect(position.x as f64, position.y as f64, w, h);
-                self.context.stroke();
-            }
-
             Ok(())
         }
     }
 
+    #[derive(Clone)]
     pub struct Rect {
         pub x: f32,
         pub y: f32,

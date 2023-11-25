@@ -30,7 +30,13 @@ impl GameObject for Stone {
         })
     }
 
+    fn bounding_box(&self) -> Rect {
+        self.bounding_box.clone()
+    }
+
     fn draw(&self, renderer: &Renderer) -> Result<()> {
+        #[cfg(feature = "collision_debug")]
+        renderer.draw_rect(&self.bounding_box);
         self.image.draw(renderer)
     }
 }
