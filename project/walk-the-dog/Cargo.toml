@@ -17,6 +17,8 @@ crate-type = ["cdylib"]
 lto = true
 
 [features]
+default = ["collision_debug"]
+collision_debug = []
 
 [dependencies]
 console_error_panic_hook = "0.1.7"

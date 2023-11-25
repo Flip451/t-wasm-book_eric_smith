@@ -128,6 +128,19 @@ pub mod renderer {
                 )
                 .map_err(|js_value| anyhow!("Error drawing image {:#?}", js_value))?;
 
+            #[cfg(feature = "collision_debug")]
+            {
+                self.context.begin_path();
+                self.context.set_stroke_style(&"red".into());
+                self.context.rect(
+                    destination.x.into(),
+                    destination.y.into(),
+                    destination.w.into(),
+                    destination.h.into(),
+                );
+                self.context.stroke();
+            }
+
             Ok(())
         }
 
@@ -135,6 +148,16 @@ pub mod renderer {
             self.context
                 .draw_image_with_html_image_element(&image, position.x as f64, position.y as f64)
                 .map_err(|js_value| anyhow!("Error drawing image {:#?}", js_value))?;
+
+            #[cfg(feature = "collision_debug")]
+            {
+                let w = image.width() as f64;
+                let h = image.height() as f64;
+                self.context.begin_path();
+                self.context
+                    .rect(position.x as f64, position.y as f64, w, h);
+                self.context.stroke();
+            }
 
             Ok(())
         }
