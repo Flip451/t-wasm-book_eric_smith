@@ -198,7 +198,8 @@ mod red_hat_boy_states {
     use crate::engine::renderer::Point;
 
     // 座標系関連
-    const FLOOR: f32 = 475.;
+    const STARTING_POINT: f32 = -20.;
+    const FLOOR: f32 = 479.;
     const RUNNING_SPEED: f32 = 3.;
     const JUMP_SPEED: f32 = -25.;
     const GRAVITY: f32 = 1.;
@@ -306,7 +307,7 @@ mod red_hat_boy_states {
             Self {
                 context: RedHatBoyContext {
                     frame: 0,
-                    position: Point { x: 0., y: FLOOR },
+                    position: Point { x: STARTING_POINT, y: FLOOR },
                     velocity: Point { x: 0., y: 0. },
                 },
                 _state: Idle,
