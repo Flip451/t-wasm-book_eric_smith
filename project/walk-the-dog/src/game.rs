@@ -10,8 +10,11 @@ use crate::engine::{
 use self::{background::Background, rhb::RedHatBoy};
 
 mod background;
+mod objects;
 mod rhb;
 mod sprite;
+
+use objects::stone::Stone;
 
 pub enum WalkTheDog {
     Loading,
@@ -21,6 +24,7 @@ pub enum WalkTheDog {
 pub struct Walk {
     rhb: RedHatBoy,
     background: Background,
+    stone: Stone,
 }
 
 impl WalkTheDog {
@@ -35,8 +39,9 @@ impl Game for WalkTheDog {
         match self {
             Self::Loading => {
                 let rhb = RedHatBoy::new().await?;
+                let stone = Stone::new().await?;
                 let background = Background::new().await?;
-                Ok(Box::new(WalkTheDog::Loaded(Walk { rhb, background })))
+                Ok(Box::new(WalkTheDog::Loaded(Walk { rhb, background, stone })))
             }
             Self::Loaded(_) => Err(anyhow!("Error: Game is already initialized")),
         }
@@ -45,7 +50,7 @@ impl Game for WalkTheDog {
     fn update(&mut self, keystate: &KeyState) {
         match self {
             Self::Loading => {}
-            Self::Loaded(Walk { rhb, background: _ }) => {
+            Self::Loaded(Walk { rhb, background: _, stone: _ }) => {
                 rhb.update();
 
                 if keystate.is_pressed("ArrowRight") {
@@ -70,7 +75,7 @@ impl Game for WalkTheDog {
     fn draw(&self, renderer: &Renderer) {
         match self {
             WalkTheDog::Loading => {}
-            WalkTheDog::Loaded(Walk { rhb, background }) => {
+            WalkTheDog::Loaded(Walk { rhb, background, stone }) => {
                 renderer.clear(&Rect {
                     x: 0.,
                     y: 0.,
@@ -80,6 +85,7 @@ impl Game for WalkTheDog {
 
                 background.draw(renderer).expect("Error drawing background");
                 rhb.draw(renderer).expect("Error drawing red hat boy");
+                stone.draw(renderer).expect("Error drawing stone");
             }
         }
     }
