@@ -50,8 +50,12 @@ impl Game for WalkTheDog {
     fn update(&mut self, keystate: &KeyState) {
         match self {
             Self::Loading => {}
-            Self::Loaded(Walk { rhb, background: _, stone: _ }) => {
+            Self::Loaded(Walk { rhb, background: _, stone }) => {
                 rhb.update();
+
+                if rhb.bounding_box().intersects(&stone.bounding_box()) {
+                    rhb.knock_out();
+                }
 
                 if keystate.is_pressed("ArrowRight") {
                     rhb.run_right();

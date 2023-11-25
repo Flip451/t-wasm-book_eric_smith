@@ -103,6 +103,10 @@ impl RedHatBoy {
     pub fn jump(&mut self) {
         self.state_machine.transition(Event::Jump);
     }
+
+    pub fn knock_out(&mut self) {
+        self.state_machine.transition(Event::KnockOut);
+    }
 }
 
 // ステートマシーン本体
@@ -111,6 +115,7 @@ enum RedHatBoyStateMachine {
     Running(RedHatBoyState<Running>),
     Sliding(RedHatBoyState<Sliding>),
     Jumping(RedHatBoyState<Jumping>),
+    Falling(RedHatBoyState<Falling>),
 }
 
 impl RedHatBoyStateMachine {
@@ -120,6 +125,7 @@ impl RedHatBoyStateMachine {
             RedHatBoyStateMachine::Running(state) => state.frame_name(),
             RedHatBoyStateMachine::Sliding(state) => state.frame_name(),
             RedHatBoyStateMachine::Jumping(state) => state.frame_name(),
+            RedHatBoyStateMachine::Falling(state) => state.frame_name(),
         }
     }
 
@@ -129,6 +135,7 @@ impl RedHatBoyStateMachine {
             RedHatBoyStateMachine::Running(state) => &state.context(),
             RedHatBoyStateMachine::Sliding(state) => &state.context(),
             RedHatBoyStateMachine::Jumping(state) => &state.context(),
+            RedHatBoyStateMachine::Falling(state) => &state.context(),
         }
     }
 
@@ -149,6 +156,16 @@ impl RedHatBoyStateMachine {
                 *self = state.slide().into()
             }
             (RedHatBoyStateMachine::Running(ref state), Event::Jump) => *self = state.jump().into(),
+            // 衝突による状態遷移
+            (RedHatBoyStateMachine::Running(ref state), Event::KnockOut) => {
+                *self = state.knock_out().into()
+            }
+            (RedHatBoyStateMachine::Sliding(ref state), Event::KnockOut) => {
+                *self = state.knock_out().into()
+            }
+            (RedHatBoyStateMachine::Jumping(ref state), Event::KnockOut) => {
+                *self = state.knock_out().into()
+            }
             // 時間経過による update 処理
             (RedHatBoyStateMachine::Idle(ref state), Event::Update) => {
                 *self = state.update().into()
@@ -160,6 +177,9 @@ impl RedHatBoyStateMachine {
                 *self = state.update().into()
             }
             (RedHatBoyStateMachine::Jumping(ref state), Event::Update) => {
+                *self = state.update().into()
+            }
+            (RedHatBoyStateMachine::Falling(ref state), Event::Update) => {
                 *self = state.update().into()
             }
             _ => {}
@@ -192,6 +212,12 @@ impl From<RedHatBoyState<Jumping>> for RedHatBoyStateMachine {
     }
 }
 
+impl From<RedHatBoyState<Falling>> for RedHatBoyStateMachine {
+    fn from(state: RedHatBoyState<Falling>) -> Self {
+        RedHatBoyStateMachine::Falling(state)
+    }
+}
+
 impl From<SlidngEndState> for RedHatBoyStateMachine {
     fn from(state: SlidngEndState) -> Self {
         match state {
@@ -217,6 +243,7 @@ enum Event {
     Slide,
     Jump,
     Update,
+    KnockOut,
 }
 
 mod red_hat_boy_states {
@@ -234,12 +261,14 @@ mod red_hat_boy_states {
     const RUNNING_FRAME_NAME: &str = "Run";
     const SLIDING_FRAME_NAME: &str = "Slide";
     const JUMPING_FRAME_NAME: &str = "Jump";
+    const FALLING_FRAME_NAME: &str = "Dead";
 
     // フレーム数
     const IDLE_FRAME_COUNT: u8 = 29;
     const RUNNING_FRAME_COUNT: u8 = 24;
     const SLIDING_FRAME_COUNT: u8 = 14;
     const JUMPING_FRAME_COUNT: u8 = 35;
+    const FALLING_FRAME_COUNT: u8 = 29;
 
     // RHB の状態を表す構造体
     pub(super) struct RedHatBoyState<S> {
@@ -279,6 +308,13 @@ mod red_hat_boy_states {
     impl RedHatBoyState<Jumping> {
         pub(super) fn frame_name(&self) -> &str {
             JUMPING_FRAME_NAME
+        }
+    }
+
+    pub(super) struct Falling;
+    impl RedHatBoyState<Falling> {
+        pub(super) fn frame_name(&self) -> &str {
+            FALLING_FRAME_NAME
         }
     }
 
@@ -323,6 +359,11 @@ mod red_hat_boy_states {
 
         fn fall(&mut self) {
             self.velocity.y += GRAVITY;
+        }
+
+        fn stop(&mut self) {
+            self.velocity.x = 0.;
+            self.velocity.y = 0.
         }
     }
 
@@ -415,6 +456,16 @@ mod red_hat_boy_states {
                 _state: Jumping,
             }
         }
+
+        pub(super) fn knock_out(&self) -> RedHatBoyState<Falling> {
+            let mut context = self.context.clone();
+            context.reset_frame();
+            context.stop();
+            RedHatBoyState {
+                context,
+                _state: Falling,
+            }
+        }
     }
 
     pub(super) enum SlidngEndState {
@@ -437,6 +488,16 @@ mod red_hat_boy_states {
                     context,
                     _state: Sliding,
                 })
+            }
+        }
+
+        pub(super) fn knock_out(&self) -> RedHatBoyState<Falling> {
+            let mut context = self.context.clone();
+            context.reset_frame();
+            context.stop();
+            RedHatBoyState {
+                context,
+                _state: Falling,
             }
         }
     }
@@ -463,6 +524,27 @@ mod red_hat_boy_states {
                     context,
                     _state: Jumping,
                 })
+            }
+        }
+        pub(super) fn knock_out(&self) -> RedHatBoyState<Falling> {
+            let mut context = self.context.clone();
+            context.reset_frame();
+            context.stop();
+            RedHatBoyState {
+                context,
+                _state: Falling,
+            }
+        }
+    }
+
+    impl RedHatBoyState<Falling> {
+        pub(super) fn update(&self) -> RedHatBoyState<Falling> {
+            let mut context = self.context.clone();
+            context.update_frame(FALLING_FRAME_COUNT);
+            context.update_position();
+            RedHatBoyState {
+                context,
+                _state: Falling,
             }
         }
     }
