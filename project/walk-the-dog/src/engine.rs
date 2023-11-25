@@ -158,6 +158,15 @@ pub mod renderer {
         pub h: f32,
     }
 
+    impl Rect {
+        pub fn intersects(&self, other: &Rect) -> bool {
+            self.x < other.x + other.w
+                && self.x + self.w > other.x
+                && self.y < other.y + other.h
+                && self.y + self.h > other.y
+        }
+    }
+
     #[derive(Clone, Copy)]
     pub struct Point {
         pub x: f32,
