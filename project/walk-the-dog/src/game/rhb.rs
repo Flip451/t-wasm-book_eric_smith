@@ -1,6 +1,6 @@
 use web_sys::HtmlImageElement;
 
-use crate::engine::Renderer;
+use crate::engine::renderer::Renderer;
 
 use self::red_hat_boy_states::*;
 use super::sprite::SpriteSheet;

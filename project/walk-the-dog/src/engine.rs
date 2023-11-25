@@ -7,9 +7,11 @@ use futures::channel::{
     oneshot,
 };
 use wasm_bindgen::{JsCast, JsValue};
-use web_sys::{CanvasRenderingContext2d, HtmlImageElement};
+use web_sys::HtmlImageElement;
 
 use crate::browser::{self, LoopClosure};
+
+use self::renderer::Renderer;
 
 pub async fn load_image(source: &str) -> Result<HtmlImageElement> {
     // ImageHtmlElement の作成
@@ -123,54 +125,60 @@ impl GameLoop {
     }
 }
 
-// HtmlRenderingContext2d のラッパー
-pub struct Renderer {
-    context: CanvasRenderingContext2d,
-}
+pub mod renderer {
+    use anyhow::{anyhow, Result};
+    use web_sys::{CanvasRenderingContext2d, HtmlImageElement};
 
-impl Renderer {
-    pub fn new() -> Result<Self> {
-        Ok(Self {
-            context: browser::context()?,
-        })
+    use crate::browser;
+
+    // HtmlRenderingContext2d のラッパー
+    pub struct Renderer {
+        context: CanvasRenderingContext2d,
     }
 
-    pub fn clear(&self, rect: &Rect) {
-        self.context
-            .clear_rect(rect.x.into(), rect.y.into(), rect.w.into(), rect.h.into());
+    impl Renderer {
+        pub fn new() -> Result<Self> {
+            Ok(Self {
+                context: browser::context()?,
+            })
+        }
+
+        pub fn clear(&self, rect: &Rect) {
+            self.context
+                .clear_rect(rect.x.into(), rect.y.into(), rect.w.into(), rect.h.into());
+        }
+
+        pub fn draw_image(
+            &self,
+            image: &HtmlImageElement,
+            frame: &Rect,
+            destination: &Rect,
+        ) -> Result<()> {
+            self.context
+                .draw_image_with_html_image_element_and_sw_and_sh_and_dx_and_dy_and_dw_and_dh(
+                    &image,
+                    frame.x as f64,
+                    frame.y as f64,
+                    frame.w as f64,
+                    frame.h as f64,
+                    destination.x as f64,
+                    destination.y as f64,
+                    destination.w as f64,
+                    destination.h as f64,
+                )
+                .map_err(|js_value| anyhow!("Error drawing image {:#?}", js_value))?;
+
+            Ok(())
+        }
     }
 
-    pub fn draw_image(
-        &self,
-        image: &HtmlImageElement,
-        frame: &Rect,
-        destination: &Rect,
-    ) -> Result<()> {
-        self.context
-            .draw_image_with_html_image_element_and_sw_and_sh_and_dx_and_dy_and_dw_and_dh(
-                &image,
-                frame.x as f64,
-                frame.y as f64,
-                frame.w as f64,
-                frame.h as f64,
-                destination.x as f64,
-                destination.y as f64,
-                destination.w as f64,
-                destination.h as f64,
-            )
-            .map_err(|js_value| anyhow!("Error drawing image {:#?}", js_value))?;
-
-        Ok(())
+    pub struct Rect {
+        pub x: f32,
+        pub y: f32,
+        pub w: f32,
+        pub h: f32,
     }
 }
-
-pub struct Rect {
-    pub x: f32,
-    pub y: f32,
-    pub w: f32,
-    pub h: f32,
-}
-
 enum KeyPress {
     KeyUp(web_sys::KeyboardEvent),
     KeyDown(web_sys::KeyboardEvent),
@@ -244,4 +252,15 @@ impl KeyState {
 pub struct Point {
     pub x: f32,
     pub y: f32,
+}
+
+pub struct Image {
+    element: HtmlImageElement,
+    position: Point,
+}
+
+impl Image {
+    pub fn new(element: HtmlImageElement, position: Point) -> Self {
+        Self { element, position }
+    }
 }

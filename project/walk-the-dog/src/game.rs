@@ -2,9 +2,11 @@ use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use gloo_utils::format::JsValueSerdeExt;
 
-use crate::{
-    browser,
-    engine::{self, Game, Rect, Renderer},
+use crate::browser;
+use crate::engine::{
+    self,
+    renderer::{Rect, Renderer},
+    Game,
 };
 
 use self::{rhb::RedHatBoy, sprite::SpriteSheet};
@@ -73,7 +75,7 @@ impl Game for WalkTheDog {
 
     fn draw(&self, renderer: &Renderer) {
         match self {
-            WalkTheDog::Loading => {},
+            WalkTheDog::Loading => {}
             WalkTheDog::Loaded(rhb) => {
                 renderer.clear(&Rect {
                     x: 0.,
