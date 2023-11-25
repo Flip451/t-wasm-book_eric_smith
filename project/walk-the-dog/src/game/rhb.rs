@@ -116,6 +116,7 @@ enum RedHatBoyStateMachine {
     Sliding(RedHatBoyState<Sliding>),
     Jumping(RedHatBoyState<Jumping>),
     Falling(RedHatBoyState<Falling>),
+    KnockedOut(RedHatBoyState<KnockedOut>),
 }
 
 impl RedHatBoyStateMachine {
@@ -126,6 +127,7 @@ impl RedHatBoyStateMachine {
             RedHatBoyStateMachine::Sliding(state) => state.frame_name(),
             RedHatBoyStateMachine::Jumping(state) => state.frame_name(),
             RedHatBoyStateMachine::Falling(state) => state.frame_name(),
+            RedHatBoyStateMachine::KnockedOut(state) => state.frame_name(),
         }
     }
 
@@ -136,6 +138,7 @@ impl RedHatBoyStateMachine {
             RedHatBoyStateMachine::Sliding(state) => &state.context(),
             RedHatBoyStateMachine::Jumping(state) => &state.context(),
             RedHatBoyStateMachine::Falling(state) => &state.context(),
+            RedHatBoyStateMachine::KnockedOut(state) => &state.context(),
         }
     }
 
@@ -236,6 +239,15 @@ impl From<JumpEndState> for RedHatBoyStateMachine {
     }
 }
 
+impl From<FallingEndState> for RedHatBoyStateMachine {
+    fn from(state: FallingEndState) -> Self {
+        match state {
+            FallingEndState::Falling(state) => RedHatBoyStateMachine::Falling(state),
+            FallingEndState::Complete(state) => RedHatBoyStateMachine::KnockedOut(state),
+        }
+    }
+}
+
 // イベント
 enum Event {
     RunRight,
@@ -313,6 +325,13 @@ mod red_hat_boy_states {
 
     pub(super) struct Falling;
     impl RedHatBoyState<Falling> {
+        pub(super) fn frame_name(&self) -> &str {
+            FALLING_FRAME_NAME
+        }
+    }
+
+    pub(super) struct KnockedOut;
+    impl RedHatBoyState<KnockedOut> {
         pub(super) fn frame_name(&self) -> &str {
             FALLING_FRAME_NAME
         }
@@ -537,14 +556,26 @@ mod red_hat_boy_states {
         }
     }
 
+    pub(super) enum FallingEndState {
+        Falling(RedHatBoyState<Falling>),
+        Complete(RedHatBoyState<KnockedOut>),
+    }
+
     impl RedHatBoyState<Falling> {
-        pub(super) fn update(&self) -> RedHatBoyState<Falling> {
+        pub(super) fn update(&self) -> FallingEndState {
             let mut context = self.context.clone();
             context.update_frame(FALLING_FRAME_COUNT);
             context.update_position();
-            RedHatBoyState {
-                context,
-                _state: Falling,
+            if context.frame == FALLING_FRAME_COUNT - 1 {
+                FallingEndState::Complete(RedHatBoyState {
+                    context,
+                    _state: KnockedOut,
+                })
+            } else {
+                FallingEndState::Falling(RedHatBoyState {
+                    context,
+                    _state: Falling,
+                })
             }
         }
     }
