@@ -130,6 +130,14 @@ pub mod renderer {
 
             Ok(())
         }
+
+        pub fn draw_entire_image(&self, image: &HtmlImageElement, position: &Point) -> Result<()> {
+            self.context
+                .draw_image_with_html_image_element(&image, position.x as f64, position.y as f64)
+                .map_err(|js_value| anyhow!("Error drawing image {:#?}", js_value))?;
+
+            Ok(())
+        }
     }
 
     pub struct Rect {
@@ -152,7 +160,7 @@ pub mod renderer {
         use wasm_bindgen::{JsCast, JsValue};
         use web_sys::HtmlImageElement;
 
-        use super::Point;
+        use super::{Point, Renderer};
         use crate::browser;
 
         pub async fn load_image(source: &str) -> Result<HtmlImageElement> {
@@ -191,6 +199,7 @@ pub mod renderer {
             Ok(image)
         }
 
+        // Renderer 上の画像を表す構造体
         pub struct Image {
             element: HtmlImageElement,
             position: Point,
@@ -199,6 +208,11 @@ pub mod renderer {
         impl Image {
             pub fn new(element: HtmlImageElement, position: Point) -> Self {
                 Self { element, position }
+            }
+
+            // Renderer 上に画像を実体化する
+            pub fn draw(&self, renderer: &Renderer) -> Result<()> {
+                renderer.draw_entire_image(&self.element, &self.position)
             }
         }
     }

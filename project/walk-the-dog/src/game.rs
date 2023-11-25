@@ -3,18 +3,27 @@ use async_trait::async_trait;
 
 use crate::engine::{
     key_state::KeyState,
-    renderer::{Rect, Renderer},
+    renderer::{
+        image::{self, Image},
+        Point, Rect, Renderer,
+    },
     Game,
 };
 
-use self::rhb::RedHatBoy;
+use self::{rhb::RedHatBoy, background::Background};
 
+mod background;
 mod rhb;
 mod sprite;
 
 pub enum WalkTheDog {
     Loading,
-    Loaded(RedHatBoy),
+    Loaded(Walk),
+}
+
+pub struct Walk {
+    rhb: RedHatBoy,
+    background: Background,
 }
 
 impl WalkTheDog {
@@ -29,7 +38,8 @@ impl Game for WalkTheDog {
         match self {
             Self::Loading => {
                 let rhb = RedHatBoy::new().await?;
-                Ok(Box::new(WalkTheDog::Loaded(rhb)))
+                let background = Background::new().await?;
+                Ok(Box::new(WalkTheDog::Loaded(Walk { rhb, background })))
             }
             Self::Loaded(_) => Err(anyhow!("Error: Game is already initialized")),
         }
@@ -38,7 +48,7 @@ impl Game for WalkTheDog {
     fn update(&mut self, keystate: &KeyState) {
         match self {
             Self::Loading => {}
-            Self::Loaded(rhb) => {
+            Self::Loaded(Walk { rhb, background: _ }) => {
                 rhb.update();
 
                 if keystate.is_pressed("ArrowRight") {
@@ -63,7 +73,7 @@ impl Game for WalkTheDog {
     fn draw(&self, renderer: &Renderer) {
         match self {
             WalkTheDog::Loading => {}
-            WalkTheDog::Loaded(rhb) => {
+            WalkTheDog::Loaded(Walk { rhb, background }) => {
                 renderer.clear(&Rect {
                     x: 0.,
                     y: 0.,
@@ -71,6 +81,7 @@ impl Game for WalkTheDog {
                     h: 600.,
                 });
 
+                background.draw(renderer);
                 rhb.draw(renderer);
             }
         }
