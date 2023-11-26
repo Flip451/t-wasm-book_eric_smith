@@ -97,6 +97,10 @@ impl RedHatBoy {
             .expect("Cell not found")
     }
 
+    pub fn is_falling(&self) -> bool {
+        self.state_machine.context().velocity.y > 0.
+    }
+
     pub fn update(&mut self) {
         self.state_machine.transition(Event::Update);
     }
@@ -372,7 +376,7 @@ mod red_hat_boy_states {
     pub(super) struct RedHatBoyContext {
         pub(super) frame: u8,
         pub(super) position: Point,
-        velocity: Point,
+        pub(super) velocity: Point,
     }
 
     impl RedHatBoyContext {

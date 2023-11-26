@@ -73,7 +73,11 @@ impl Game for WalkTheDog {
                 rhb.update();
 
                 if rhb.bounding_box().intersects(&platform.bounding_box()) {
-                    rhb.land_on(platform.bounding_box().y);
+                    if rhb.bounding_box().y < platform.bounding_box().y && rhb.is_falling() {
+                        rhb.land_on(platform.bounding_box().y);
+                    } else {
+                        rhb.knock_out();
+                    }
                 }
 
                 if rhb.bounding_box().intersects(&stone.bounding_box()) {
