@@ -16,6 +16,9 @@ mod sprite;
 
 use objects::stone::Stone;
 
+const WIDTH: f32 = 600.;
+const HEIGHT: f32 = 600.;
+
 pub enum WalkTheDog {
     Loading,
     Loaded(Walk),
@@ -69,6 +72,10 @@ impl Game for WalkTheDog {
             }) => {
                 rhb.update();
 
+                if rhb.bounding_box().intersects(&platform.bounding_box()) {
+                    rhb.land_on(platform.bounding_box().y);
+                }
+
                 if rhb.bounding_box().intersects(&stone.bounding_box()) {
                     rhb.knock_out();
                 }
@@ -104,8 +111,8 @@ impl Game for WalkTheDog {
                 renderer.clear(&Rect {
                     x: 0.,
                     y: 0.,
-                    w: 600.,
-                    h: 600.,
+                    w: WIDTH,
+                    h: HEIGHT,
                 });
 
                 background.draw(renderer).expect("Error drawing background");

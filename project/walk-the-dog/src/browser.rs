@@ -26,6 +26,7 @@ pub mod window {
     }
 }
 
+#[macro_use]
 pub mod utils {
     use super::*;
 

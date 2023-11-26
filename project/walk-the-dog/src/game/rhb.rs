@@ -120,6 +120,10 @@ impl RedHatBoy {
     pub fn knock_out(&mut self) {
         self.state_machine.transition(Event::KnockOut);
     }
+
+    pub fn land_on(&mut self, y: f32) {
+        self.state_machine.transition(Event::Land(y));
+    }
 }
 
 // ステートマシーン本体
@@ -181,6 +185,9 @@ impl RedHatBoyStateMachine {
             }
             (RedHatBoyStateMachine::Jumping(ref state), Event::KnockOut) => {
                 *self = state.knock_out().into()
+            }
+            (RedHatBoyStateMachine::Jumping(ref state), Event::Land(y)) => {
+                *self = state.land_on(y).into()
             }
             // 時間経過による update 処理
             (RedHatBoyStateMachine::Idle(ref state), Event::Update) => {
@@ -269,13 +276,16 @@ enum Event {
     Jump,
     Update,
     KnockOut,
+    Land(f32),
 }
 
 mod red_hat_boy_states {
     use crate::engine::renderer::Point;
 
     // 座標系関連
+    use super::super::HEIGHT;
     use super::FLOOR;
+    const PLAYER_HEIGHT: f32 = HEIGHT - FLOOR;
     const RUNNING_SPEED: f32 = 3.;
     const JUMP_SPEED: f32 = -25.;
     const GRAVITY: f32 = 1.;
@@ -383,9 +393,9 @@ mod red_hat_boy_states {
             self.velocity.y = JUMP_SPEED;
         }
 
-        fn land(&mut self) {
+        fn land_on(&mut self, y: f32) {
             self.velocity.y = 0.;
-            self.position.y = FLOOR;
+            self.position.y = y;
         }
 
         fn fall(&mut self) {
@@ -507,6 +517,7 @@ mod red_hat_boy_states {
             context.update_frame(SLIDING_FRAME_COUNT);
             context.update_position();
             if context.frame == 0 {
+                context.reset_frame();
                 SlidngEndState::Complete(RedHatBoyState {
                     context,
                     _state: Running,
@@ -538,11 +549,14 @@ mod red_hat_boy_states {
     impl RedHatBoyState<Jumping> {
         pub(super) fn update(&self) -> JumpEndState {
             let mut context = self.context.clone();
-            context.update_frame(JUMPING_FRAME_COUNT);
+            if context.frame < JUMPING_FRAME_COUNT - 1 {
+                context.update_frame(JUMPING_FRAME_COUNT);
+            }
             context.update_position();
             context.fall();
             if context.position.y >= FLOOR {
-                context.land();
+                context.land_on(FLOOR);
+                context.reset_frame();
                 JumpEndState::Complete(RedHatBoyState {
                     context,
                     _state: Running,
@@ -554,6 +568,7 @@ mod red_hat_boy_states {
                 })
             }
         }
+
         pub(super) fn knock_out(&self) -> RedHatBoyState<Falling> {
             let mut context = self.context.clone();
             context.reset_frame();
@@ -561,6 +576,16 @@ mod red_hat_boy_states {
             RedHatBoyState {
                 context,
                 _state: Falling,
+            }
+        }
+
+        pub(super) fn land_on(&self, y: f32) -> RedHatBoyState<Running> {
+            let mut context = self.context.clone();
+            context.reset_frame();
+            context.land_on(y - PLAYER_HEIGHT);
+            RedHatBoyState {
+                context,
+                _state: Running,
             }
         }
     }
