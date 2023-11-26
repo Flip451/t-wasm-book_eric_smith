@@ -42,22 +42,28 @@ impl GameObject for RedHatBoy {
     }
 
     fn bounding_box(&self) -> Rect {
+        const X_OFFSET: f32 = 18.;
+        const Y_OFFSET: f32 = 14.;
+        const WIDTH_OFFSET: f32 = -28.;
+        const HEIGHT_OFFSET: f32 = 0.;
+
         let sprite = self.current_sprite();
-        sprite.to_rect_on_canvas(
+        let mut raw_rect = sprite.to_rect_on_canvas(
             self.state_machine.context().position.x,
             self.state_machine.context().position.y,
             sprite.width(),
             sprite.height(),
-        )
+        );
+        raw_rect.x += X_OFFSET;
+        raw_rect.y += Y_OFFSET;
+        raw_rect.w += WIDTH_OFFSET;
+        raw_rect.h += HEIGHT_OFFSET;
+        raw_rect
     }
 
     fn draw(&self, renderer: &Renderer) -> Result<()> {
         // シートの中から指定の画像（Run (*).png）の位置を取得
         let sprite = self.current_sprite();
-
-        // キャンバスに bounding box を描画
-        #[cfg(feature = "collision_debug")]
-        renderer.draw_rect(&self.bounding_box());
 
         // キャンバスに指定の画像を描画
         renderer.draw_image(
@@ -74,7 +80,13 @@ impl GameObject for RedHatBoy {
                 sprite.width(),
                 sprite.height(),
             ),
-        )
+        )?;
+
+        // キャンバスに bounding box を描画
+        #[cfg(feature = "collision_debug")]
+        renderer.draw_rect(&self.bounding_box());
+
+        Ok(())
     }
 }
 
