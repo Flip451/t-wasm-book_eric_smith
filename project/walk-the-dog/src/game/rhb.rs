@@ -4,11 +4,15 @@ use gloo_utils::format::JsValueSerdeExt;
 use web_sys::HtmlImageElement;
 
 use crate::browser;
-use crate::engine::renderer::{image, Rect, Renderer};
+use crate::engine::renderer::{image, Point, Rect, Renderer};
 
 use self::red_hat_boy_states::*;
 use super::objects::GameObject;
 use super::sprite::{Cell, SpriteSheet};
+
+// 座標系関連
+pub const STARTING_POINT: f32 = -20.;
+pub const FLOOR: f32 = 479.;
 
 pub struct RedHatBoy {
     state_machine: RedHatBoyStateMachine,
@@ -18,7 +22,7 @@ pub struct RedHatBoy {
 
 #[async_trait(?Send)]
 impl GameObject for RedHatBoy {
-    async fn new() -> Result<Self> {
+    async fn new(position: Point) -> Result<Self> {
         let json = browser::fetch_json("rhb.json").await?;
 
         // json を Sheet 型に変換
@@ -31,7 +35,7 @@ impl GameObject for RedHatBoy {
         let image = image::load_image("rhb.png").await?;
 
         Ok(Self {
-            state_machine: RedHatBoyStateMachine::Idle(RedHatBoyState::<Idle>::new()),
+            state_machine: RedHatBoyStateMachine::Idle(RedHatBoyState::<Idle>::new(position)),
             sprite_sheet,
             image,
         })
@@ -42,6 +46,8 @@ impl GameObject for RedHatBoy {
         sprite.to_rect_on_canvas(
             self.state_machine.context().position.x,
             self.state_machine.context().position.y,
+            sprite.width(),
+            sprite.height(),
         )
     }
 
@@ -56,10 +62,17 @@ impl GameObject for RedHatBoy {
         // キャンバスに指定の画像を描画
         renderer.draw_image(
             &self.image,
-            &sprite.to_rect_on_sheet(),
+            &Rect {
+                x: sprite.x() as f32,
+                y: sprite.y() as f32,
+                w: sprite.width() as f32,
+                h: sprite.height() as f32,
+            },
             &sprite.to_rect_on_canvas(
                 self.state_machine.context().position.x,
                 self.state_machine.context().position.y,
+                sprite.width(),
+                sprite.height(),
             ),
         )
     }
@@ -262,8 +275,7 @@ mod red_hat_boy_states {
     use crate::engine::renderer::Point;
 
     // 座標系関連
-    const STARTING_POINT: f32 = -20.;
-    const FLOOR: f32 = 479.;
+    use super::FLOOR;
     const RUNNING_SPEED: f32 = 3.;
     const JUMP_SPEED: f32 = -25.;
     const GRAVITY: f32 = 1.;
@@ -388,14 +400,11 @@ mod red_hat_boy_states {
 
     // 初期状態の定義
     impl RedHatBoyState<Idle> {
-        pub(super) fn new() -> Self {
+        pub(super) fn new(position: Point) -> Self {
             Self {
                 context: RedHatBoyContext {
                     frame: 0,
-                    position: Point {
-                        x: STARTING_POINT,
-                        y: FLOOR,
-                    },
+                    position,
                     velocity: Point { x: 0., y: 0. },
                 },
                 _state: Idle,

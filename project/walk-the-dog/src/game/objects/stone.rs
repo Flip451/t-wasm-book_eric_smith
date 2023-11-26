@@ -15,9 +15,9 @@ pub struct Stone {
 
 #[async_trait(?Send)]
 impl GameObject for Stone {
-    async fn new() -> Result<Self> {
+    async fn new(position: Point) -> Result<Self> {
         let image = image::load_image("Stone.png").await?;
-        let image = Image::new(image, Point { x: 150., y: 546. });
+        let image = Image::new(image, position);
         let bounding_box = Rect {
             x: image.position().x,
             y: image.position().y,

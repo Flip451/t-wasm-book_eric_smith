@@ -3,11 +3,11 @@ use async_trait::async_trait;
 
 use crate::engine::{
     key_state::KeyState,
-    renderer::{Rect, Renderer},
+    renderer::{Point, Rect, Renderer},
     Game,
 };
 
-use self::{background::Background, rhb::RedHatBoy, objects::GameObject};
+use self::{background::Background, objects::{GameObject, platform::Platform}, rhb::{RedHatBoy, FLOOR, STARTING_POINT}};
 
 mod background;
 mod objects;
@@ -25,6 +25,7 @@ pub struct Walk {
     rhb: RedHatBoy,
     background: Background,
     stone: Stone,
+    platform: Platform,
 }
 
 impl WalkTheDog {
@@ -38,10 +39,20 @@ impl Game for WalkTheDog {
     async fn initialize(&self) -> Result<Box<dyn Game>> {
         match self {
             Self::Loading => {
-                let rhb = RedHatBoy::new().await?;
-                let stone = Stone::new().await?;
+                let rhb = RedHatBoy::new(Point {
+                    x: STARTING_POINT,
+                    y: FLOOR,
+                })
+                .await?;
+                let stone = Stone::new(Point { x: 150., y: 546. }).await?;
                 let background = Background::new().await?;
-                Ok(Box::new(WalkTheDog::Loaded(Walk { rhb, background, stone })))
+                let platform = Platform::new(Point { x: 200., y: 400. }).await?;
+                Ok(Box::new(WalkTheDog::Loaded(Walk {
+                    rhb,
+                    background,
+                    stone,
+                    platform,
+                })))
             }
             Self::Loaded(_) => Err(anyhow!("Error: Game is already initialized")),
         }
@@ -50,7 +61,12 @@ impl Game for WalkTheDog {
     fn update(&mut self, keystate: &KeyState) {
         match self {
             Self::Loading => {}
-            Self::Loaded(Walk { rhb, background: _, stone }) => {
+            Self::Loaded(Walk {
+                rhb,
+                background: _,
+                stone,
+                platform,
+            }) => {
                 rhb.update();
 
                 if rhb.bounding_box().intersects(&stone.bounding_box()) {
@@ -79,7 +95,12 @@ impl Game for WalkTheDog {
     fn draw(&self, renderer: &Renderer) {
         match self {
             WalkTheDog::Loading => {}
-            WalkTheDog::Loaded(Walk { rhb, background, stone }) => {
+            WalkTheDog::Loaded(Walk {
+                rhb,
+                background,
+                stone,
+                platform,
+            }) => {
                 renderer.clear(&Rect {
                     x: 0.,
                     y: 0.,
@@ -90,6 +111,7 @@ impl Game for WalkTheDog {
                 background.draw(renderer).expect("Error drawing background");
                 rhb.draw(renderer).expect("Error drawing red hat boy");
                 stone.draw(renderer).expect("Error drawing stone");
+                platform.draw(renderer).expect("Error drawing platform");
             }
         }
     }
