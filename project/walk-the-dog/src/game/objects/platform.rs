@@ -51,26 +51,26 @@ impl GameObject for Platform {
 
         let mut bounding_box = BoundingBox::new();
 
-        bounding_box.add(Rect {
-            x: raw_rect.x,
-            y: raw_rect.y,
-            w: X_OFFSET,
-            h: END_HEIGHT,
-        });
+        bounding_box.add(Rect::new_from_x_y(
+            raw_rect.x(),
+            raw_rect.y(),
+            X_OFFSET,
+            END_HEIGHT,
+        ));
 
-        bounding_box.add(Rect {
-            x: raw_rect.x + X_OFFSET,
-            y: raw_rect.y,
-            w: raw_rect.w - X_OFFSET * 2,
-            h: raw_rect.h,
-        });
+        bounding_box.add(Rect::new_from_x_y(
+            raw_rect.x() + X_OFFSET,
+            raw_rect.y(),
+            raw_rect.w - X_OFFSET * 2,
+            raw_rect.h,
+        ));
 
-        bounding_box.add(Rect {
-            x: raw_rect.x + raw_rect.w - X_OFFSET,
-            y: raw_rect.y,
-            w: X_OFFSET,
-            h: END_HEIGHT,
-        });
+        bounding_box.add(Rect::new_from_x_y(
+            raw_rect.x() + raw_rect.w - X_OFFSET,
+            raw_rect.y(),
+            X_OFFSET,
+            END_HEIGHT,
+        ));
 
         bounding_box
     }
@@ -84,12 +84,7 @@ impl GameObject for Platform {
 
         renderer.draw_image(
             &self.image,
-            &Rect {
-                x: sprite.x(),
-                y: sprite.y(),
-                w: sprite.width() * 3,
-                h: sprite.height(),
-            },
+            &Rect::new_from_x_y(sprite.x(), sprite.y(), sprite.width() * 3, sprite.height()),
             &sprite.to_rect_on_canvas(
                 self.position.x,
                 self.position.y,

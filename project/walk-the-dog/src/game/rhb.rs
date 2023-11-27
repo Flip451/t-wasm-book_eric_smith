@@ -55,8 +55,8 @@ impl GameObject for RedHatBoy {
             sprite.width(),
             sprite.height(),
         );
-        raw_rect.x += X_OFFSET;
-        raw_rect.y += Y_OFFSET;
+        raw_rect.set_x(raw_rect.x() + X_OFFSET);
+        raw_rect.set_y(raw_rect.y() + Y_OFFSET);
         raw_rect.w += WIDTH_OFFSET;
         raw_rect.h += HEIGHT_OFFSET;
 
@@ -72,12 +72,7 @@ impl GameObject for RedHatBoy {
         // キャンバスに指定の画像を描画
         renderer.draw_image(
             &self.image,
-            &Rect {
-                x: sprite.x(),
-                y: sprite.y(),
-                w: sprite.width(),
-                h: sprite.height(),
-            },
+            &&Rect::new_from_x_y(sprite.x(), sprite.y(), sprite.width(), sprite.height()),
             &sprite.to_rect_on_canvas(
                 self.state_machine.context().position.x,
                 self.state_machine.context().position.y,

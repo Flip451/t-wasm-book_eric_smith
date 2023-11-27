@@ -39,16 +39,25 @@ impl Background {
             image.move_horizontally(velocity);
         });
 
+        // 画像が画面の左端から外に出たら、右端に移動する
         let len = self.images.len();
-        let right_position_list = self.images.iter().map(|image| image.right()).collect::<Vec<_>>();
+        let right_position_list = self
+            .images
+            .iter()
+            .map(|image| image.right())
+            .collect::<Vec<_>>();
 
-        let image_out_of_game = self.images.iter_mut().enumerate().find(|(_, image)| {
-            image.right() < 0
-        });
+        let image_out_of_game = self
+            .images
+            .iter_mut()
+            .enumerate()
+            .find(|(_, image)| image.right() < 0);
 
         if let Some((index, image)) = image_out_of_game {
             let new_x = right_position_list[(index + len - 1) % len];
             image.set_x(new_x);
         }
+
+        // TODO: 画像が画面の右端から外に出たら、左端に移動する
     }
 }

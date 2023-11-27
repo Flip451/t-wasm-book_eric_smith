@@ -104,15 +104,23 @@ pub mod renderer {
         }
 
         pub fn clear(&self, rect: &Rect) {
-            self.context
-                .clear_rect(rect.x.into(), rect.y.into(), rect.w.into(), rect.h.into());
+            self.context.clear_rect(
+                rect.x().into(),
+                rect.y().into(),
+                rect.w.into(),
+                rect.h.into(),
+            );
         }
 
         pub fn draw_rect(&self, rect: &Rect) {
             self.context.begin_path();
             self.context.set_stroke_style(&"red".into());
-            self.context
-                .rect(rect.x.into(), rect.y.into(), rect.w.into(), rect.h.into());
+            self.context.rect(
+                rect.x().into(),
+                rect.y().into(),
+                rect.w.into(),
+                rect.h.into(),
+            );
             self.context.stroke();
         }
 
@@ -125,12 +133,12 @@ pub mod renderer {
             self.context
                 .draw_image_with_html_image_element_and_sw_and_sh_and_dx_and_dy_and_dw_and_dh(
                     &image,
-                    frame.x as f64,
-                    frame.y as f64,
+                    frame.x() as f64,
+                    frame.y() as f64,
                     frame.w as f64,
                     frame.h as f64,
-                    destination.x as f64,
-                    destination.y as f64,
+                    destination.x() as f64,
+                    destination.y() as f64,
                     destination.w as f64,
                     destination.h as f64,
                 )
@@ -150,26 +158,53 @@ pub mod renderer {
 
     #[derive(Clone)]
     pub struct Rect {
-        pub x: i16,
-        pub y: i16,
+        position: Point,
         pub w: i16,
         pub h: i16,
     }
 
     impl Rect {
+        pub fn new(position: Point, width: i16, height: i16) -> Self {
+            Self {
+                position,
+                w: width,
+                h: height,
+            }
+        }
+
+        pub fn new_from_x_y(x: i16, y: i16, width: i16, height: i16) -> Self {
+            Self::new(Point { x, y }, width, height)
+        }
+
         pub fn intersects(&self, other: &Rect) -> bool {
-            self.x < other.right()
-                && self.right() > other.x
-                && self.y < other.bottom()
-                && self.bottom() > other.y
+            self.x() < other.right()
+                && self.right() > other.x()
+                && self.y() < other.bottom()
+                && self.bottom() > other.y()
+        }
+
+        pub fn x(&self) -> i16 {
+            self.position.x
+        }
+
+        pub fn y(&self) -> i16 {
+            self.position.y
+        }
+
+        pub fn set_x(&mut self, x: i16) {
+            self.position.x = x;
+        }
+
+        pub fn set_y(&mut self, y: i16) {
+            self.position.y = y;
         }
 
         pub fn right(&self) -> i16 {
-            self.x + self.w
+            self.x() + self.w
         }
 
         pub fn bottom(&self) -> i16 {
-            self.y + self.h
+            self.y() + self.h
         }
     }
 

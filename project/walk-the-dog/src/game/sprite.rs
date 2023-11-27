@@ -20,12 +20,12 @@ pub struct Cell {
 
 impl Cell {
     pub fn to_rect_on_canvas(&self, x: i16, y: i16, w: i16, h: i16) -> Rect {
-        Rect {
-            x: x + self.sprite_source_size.x,
-            y: y + self.sprite_source_size.y,
+        Rect::new_from_x_y(
+            x + self.sprite_source_size.x,
+            y + self.sprite_source_size.y,
             w,
             h,
-        }
+        )
     }
 
     pub fn x(&self) -> i16 {

@@ -45,7 +45,7 @@ pub struct Walk {
 
 impl Walk {
     fn velocity(&self) -> i16 {
-        - self.rhb.walking_speed()
+        -self.rhb.walking_speed()
     }
 }
 
@@ -111,8 +111,8 @@ impl Game for WalkTheDog {
                 {
                     // rhb が platform より上にいるかどうかを判定
                     // かつ rhb が落下しているかどうかを判定
-                    if rhb_rect.y < platform_rect.y && rhb.is_falling() {
-                        rhb.land_on(platform_rect.y);
+                    if rhb_rect.y() < platform_rect.y() && rhb.is_falling() {
+                        rhb.land_on(platform_rect.y());
                     } else {
                         rhb.knock_out();
                     }
@@ -151,12 +151,7 @@ impl Game for WalkTheDog {
                 stone,
                 platform,
             }) => {
-                renderer.clear(&Rect {
-                    x: 0,
-                    y: 0,
-                    w: WIDTH,
-                    h: HEIGHT,
-                });
+                renderer.clear(&Rect::new_from_x_y(0, 0, WIDTH, HEIGHT));
 
                 background.draw(renderer).expect("Error drawing background");
                 rhb.draw(renderer).expect("Error drawing red hat boy");
