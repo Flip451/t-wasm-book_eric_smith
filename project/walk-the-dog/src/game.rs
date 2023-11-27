@@ -101,27 +101,13 @@ impl Game for WalkTheDog {
                 } = walk;
                 rhb.update();
 
-                platform.update(velocity);
-                stone.update(velocity);
+                platform.update_position(velocity);
+                stone.update_position(velocity);
                 background.update(velocity);
 
-                // rhb のbounding box と platform の bounding box が重なっているかどうかを判定
-                if let Some((rhb_rect, platform_rect)) =
-                    rhb.bounding_box().intersects(&platform.bounding_box())
-                {
-                    // rhb が platform より上にいるかどうかを判定
-                    // かつ rhb が落下しているかどうかを判定
-                    if rhb_rect.y() < platform_rect.y() && rhb.is_falling() {
-                        rhb.land_on(platform_rect.y());
-                    } else {
-                        rhb.knock_out();
-                    }
-                }
-
-                // rhb のbounding box と stone の bounding box が重なっているかどうかを判定
-                if let Some((_, _)) = rhb.bounding_box().intersects(&stone.bounding_box()) {
-                    rhb.knock_out();
-                }
+                // 障害物との衝突判定
+                platform.check_intersection(rhb);
+                stone.check_intersection(rhb);
 
                 if keystate.is_pressed("ArrowRight") {
                     rhb.run_right();

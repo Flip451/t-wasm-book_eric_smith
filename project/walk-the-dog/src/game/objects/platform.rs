@@ -102,7 +102,20 @@ impl GameObject for Platform {
 }
 
 impl Obstacle for Platform {
-    fn update(&mut self, velocity: i16) {
+    fn update_position(&mut self, velocity: i16) {
         self.position.x += velocity;
+    }
+
+    fn check_intersection(&self, rhb: &mut crate::game::rhb::RedHatBoy) {
+        if let Some((rhb_rect, platform_rect)) = rhb.bounding_box().intersects(&self.bounding_box())
+        {
+            // rhb が platform より上にいるかどうかを判定
+            // かつ rhb が落下しているかどうかを判定
+            if rhb_rect.y() < platform_rect.y() && rhb.is_falling() {
+                rhb.land_on(platform_rect.y());
+            } else {
+                rhb.knock_out();
+            }
+        }
     }
 }

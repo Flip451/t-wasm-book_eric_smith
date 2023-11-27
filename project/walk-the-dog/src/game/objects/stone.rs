@@ -45,7 +45,13 @@ impl GameObject for Stone {
 }
 
 impl Obstacle for Stone {
-    fn update(&mut self, velocity: i16) {
+    fn update_position(&mut self, velocity: i16) {
         self.image.move_horizontally(velocity);
+    }
+
+    fn check_intersection(&self, rhb: &mut crate::game::rhb::RedHatBoy) {
+        if let Some((_, _)) = rhb.bounding_box().intersects(&self.bounding_box()) {
+            rhb.knock_out();
+        }
     }
 }

@@ -57,7 +57,5 @@ impl Background {
             let new_x = right_position_list[(index + len - 1) % len];
             image.set_x(new_x);
         }
-
-        // TODO: 画像が画面の右端から外に出たら、左端に移動する
     }
 }

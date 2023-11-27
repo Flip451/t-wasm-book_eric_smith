@@ -6,7 +6,7 @@ use async_trait::async_trait;
 
 use crate::engine::renderer::{Renderer, Point};
 
-use super::bounding_box::BoundingBox;
+use super::{bounding_box::BoundingBox, rhb::RedHatBoy};
 
 #[async_trait(?Send)]
 pub trait GameObject {
@@ -17,6 +17,7 @@ pub trait GameObject {
     fn draw(&self, renderer: &Renderer) -> Result<()>;
 }
 
-pub trait Obstacle {
-    fn update(&mut self, velocity: i16);
+pub trait Obstacle: GameObject {
+    fn update_position(&mut self, velocity: i16);
+    fn check_intersection(&self, rhb: &mut RedHatBoy);
 }
