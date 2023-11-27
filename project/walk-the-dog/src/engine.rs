@@ -158,10 +158,18 @@ pub mod renderer {
 
     impl Rect {
         pub fn intersects(&self, other: &Rect) -> bool {
-            self.x < other.x + other.w
-                && self.x + self.w > other.x
-                && self.y < other.y + other.h
-                && self.y + self.h > other.y
+            self.x < other.right()
+                && self.right() > other.x
+                && self.y < other.bottom()
+                && self.bottom() > other.y
+        }
+
+        pub fn right(&self) -> i16 {
+            self.x + self.w
+        }
+
+        pub fn bottom(&self) -> i16 {
+            self.y + self.h
         }
     }
 
