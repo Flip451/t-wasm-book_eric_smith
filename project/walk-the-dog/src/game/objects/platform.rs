@@ -6,7 +6,7 @@ use web_sys::HtmlImageElement;
 use crate::{
     browser,
     engine::renderer::{image, Point, Rect, Renderer},
-    game::sprite::SpriteSheet,
+    game::{bounding_box::BoundingBox, sprite::SpriteSheet},
 };
 
 use super::GameObject;
@@ -32,25 +32,50 @@ impl GameObject for Platform {
         })
     }
 
-    fn bounding_box(&self) -> Rect {
+    fn bounding_box(&self) -> BoundingBox {
+        const X_OFFSET: f32 = 60.;
+        const END_HEIGHT: f32 = 54.;
+
         let sprite = self
             .sprite_sheet
             .frames
             .get("13.png")
             .expect("Error: Cell not found");
 
-        sprite.to_rect_on_canvas(
+        let raw_rect = sprite.to_rect_on_canvas(
             self.position.x,
             self.position.y,
             sprite.width() * 3.,
             sprite.height(),
-        )
+        );
+
+        let mut bounding_box = BoundingBox::new();
+
+        bounding_box.add(Rect {
+            x: raw_rect.x,
+            y: raw_rect.y,
+            w: X_OFFSET,
+            h: END_HEIGHT,
+        });
+
+        bounding_box.add(Rect {
+            x: raw_rect.x + X_OFFSET,
+            y: raw_rect.y,
+            w: raw_rect.w - X_OFFSET * 2.,
+            h: raw_rect.h,
+        });
+
+        bounding_box.add(Rect {
+            x: raw_rect.x + raw_rect.w - X_OFFSET,
+            y: raw_rect.y,
+            w: X_OFFSET,
+            h: END_HEIGHT,
+        });
+
+        bounding_box
     }
 
     fn draw(&self, renderer: &Renderer) -> Result<()> {
-        #[cfg(feature = "collision_debug")]
-        renderer.draw_rect(&self.bounding_box());
-
         let sprite = self
             .sprite_sheet
             .frames
@@ -72,6 +97,10 @@ impl GameObject for Platform {
                 sprite.height(),
             ),
         )?;
+
+        // キャンバスに bounding box を描画
+        #[cfg(feature = "collision_debug")]
+        self.bounding_box().draw(renderer)?;
 
         Ok(())
     }

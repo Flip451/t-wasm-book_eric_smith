@@ -7,6 +7,7 @@ use crate::browser;
 use crate::engine::renderer::{image, Point, Rect, Renderer};
 
 use self::red_hat_boy_states::*;
+use super::bounding_box::BoundingBox;
 use super::objects::GameObject;
 use super::sprite::{Cell, SpriteSheet};
 
@@ -41,7 +42,7 @@ impl GameObject for RedHatBoy {
         })
     }
 
-    fn bounding_box(&self) -> Rect {
+    fn bounding_box(&self) -> BoundingBox {
         const X_OFFSET: f32 = 18.;
         const Y_OFFSET: f32 = 14.;
         const WIDTH_OFFSET: f32 = -28.;
@@ -58,7 +59,10 @@ impl GameObject for RedHatBoy {
         raw_rect.y += Y_OFFSET;
         raw_rect.w += WIDTH_OFFSET;
         raw_rect.h += HEIGHT_OFFSET;
-        raw_rect
+
+        let mut bounding_boxes = BoundingBox::new();
+        bounding_boxes.add(raw_rect);
+        bounding_boxes
     }
 
     fn draw(&self, renderer: &Renderer) -> Result<()> {
@@ -84,7 +88,7 @@ impl GameObject for RedHatBoy {
 
         // キャンバスに bounding box を描画
         #[cfg(feature = "collision_debug")]
-        renderer.draw_rect(&self.bounding_box());
+        self.bounding_box().draw(renderer)?;
 
         Ok(())
     }

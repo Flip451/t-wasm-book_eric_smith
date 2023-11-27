@@ -1,10 +1,10 @@
 use anyhow::Result;
 use async_trait::async_trait;
 
-use crate::engine::renderer::{
+use crate::{engine::renderer::{
     image::{self, Image},
     Point, Rect, Renderer,
-};
+}, game::bounding_box::BoundingBox};
 
 use super::GameObject;
 
@@ -30,8 +30,10 @@ impl GameObject for Stone {
         })
     }
 
-    fn bounding_box(&self) -> Rect {
-        self.bounding_box.clone()
+    fn bounding_box(&self) -> BoundingBox {
+        let mut bounding_boxes = BoundingBox::new();
+        bounding_boxes.add(self.bounding_box.clone());
+        bounding_boxes
     }
 
     fn draw(&self, renderer: &Renderer) -> Result<()> {
