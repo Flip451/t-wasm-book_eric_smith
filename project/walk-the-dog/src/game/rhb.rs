@@ -4,11 +4,16 @@ use gloo_utils::format::JsValueSerdeExt;
 use web_sys::HtmlImageElement;
 
 use crate::browser;
-use crate::engine::renderer::{image, Rect, Renderer};
+use crate::engine::renderer::{image, Point, Rect, Renderer};
 
 use self::red_hat_boy_states::*;
+use super::bounding_box::BoundingBox;
 use super::objects::GameObject;
 use super::sprite::{Cell, SpriteSheet};
+
+// 座標系関連
+pub const STARTING_POINT: f32 = -20.;
+pub const FLOOR: f32 = 479.;
 
 pub struct RedHatBoy {
     state_machine: RedHatBoyStateMachine,
@@ -18,7 +23,7 @@ pub struct RedHatBoy {
 
 #[async_trait(?Send)]
 impl GameObject for RedHatBoy {
-    async fn new() -> Result<Self> {
+    async fn new(position: Point) -> Result<Self> {
         let json = browser::fetch_json("rhb.json").await?;
 
         // json を Sheet 型に変換
@@ -31,37 +36,61 @@ impl GameObject for RedHatBoy {
         let image = image::load_image("rhb.png").await?;
 
         Ok(Self {
-            state_machine: RedHatBoyStateMachine::Idle(RedHatBoyState::<Idle>::new()),
+            state_machine: RedHatBoyStateMachine::Idle(RedHatBoyState::<Idle>::new(position)),
             sprite_sheet,
             image,
         })
     }
 
-    fn bounding_box(&self) -> Rect {
+    fn bounding_box(&self) -> BoundingBox {
+        const X_OFFSET: f32 = 18.;
+        const Y_OFFSET: f32 = 14.;
+        const WIDTH_OFFSET: f32 = -28.;
+        const HEIGHT_OFFSET: f32 = 0.;
+
         let sprite = self.current_sprite();
-        sprite.to_rect_on_canvas(
+        let mut raw_rect = sprite.to_rect_on_canvas(
             self.state_machine.context().position.x,
             self.state_machine.context().position.y,
-        )
+            sprite.width(),
+            sprite.height(),
+        );
+        raw_rect.x += X_OFFSET;
+        raw_rect.y += Y_OFFSET;
+        raw_rect.w += WIDTH_OFFSET;
+        raw_rect.h += HEIGHT_OFFSET;
+
+        let mut bounding_boxes = BoundingBox::new();
+        bounding_boxes.add(raw_rect);
+        bounding_boxes
     }
 
     fn draw(&self, renderer: &Renderer) -> Result<()> {
         // シートの中から指定の画像（Run (*).png）の位置を取得
         let sprite = self.current_sprite();
 
-        // キャンバスに bounding box を描画
-        #[cfg(feature = "collision_debug")]
-        renderer.draw_rect(&self.bounding_box());
-
         // キャンバスに指定の画像を描画
         renderer.draw_image(
             &self.image,
-            &sprite.to_rect_on_sheet(),
+            &Rect {
+                x: sprite.x() as f32,
+                y: sprite.y() as f32,
+                w: sprite.width() as f32,
+                h: sprite.height() as f32,
+            },
             &sprite.to_rect_on_canvas(
                 self.state_machine.context().position.x,
                 self.state_machine.context().position.y,
+                sprite.width(),
+                sprite.height(),
             ),
-        )
+        )?;
+
+        // キャンバスに bounding box を描画
+        #[cfg(feature = "collision_debug")]
+        self.bounding_box().draw(renderer)?;
+
+        Ok(())
     }
 }
 
@@ -82,6 +111,10 @@ impl RedHatBoy {
             .frames
             .get(&frame_name)
             .expect("Cell not found")
+    }
+
+    pub fn is_falling(&self) -> bool {
+        self.state_machine.context().velocity.y > 0.
     }
 
     pub fn update(&mut self) {
@@ -106,6 +139,10 @@ impl RedHatBoy {
 
     pub fn knock_out(&mut self) {
         self.state_machine.transition(Event::KnockOut);
+    }
+
+    pub fn land_on(&mut self, y: f32) {
+        self.state_machine.transition(Event::Land(y));
     }
 }
 
@@ -168,6 +205,16 @@ impl RedHatBoyStateMachine {
             }
             (RedHatBoyStateMachine::Jumping(ref state), Event::KnockOut) => {
                 *self = state.knock_out().into()
+            }
+            // 踏み台のへの衝突による状態遷移
+            (RedHatBoyStateMachine::Jumping(ref state), Event::Land(y)) => {
+                *self = state.land_on(y).into()
+            }
+            (RedHatBoyStateMachine::Running(ref state), Event::Land(y)) => {
+                *self = state.land_on(y).into()
+            }
+            (RedHatBoyStateMachine::Sliding(ref state), Event::Land(y)) => {
+                *self = state.land_on(y).into()
             }
             // 時間経過による update 処理
             (RedHatBoyStateMachine::Idle(ref state), Event::Update) => {
@@ -256,17 +303,20 @@ enum Event {
     Jump,
     Update,
     KnockOut,
+    Land(f32),
 }
 
 mod red_hat_boy_states {
     use crate::engine::renderer::Point;
 
     // 座標系関連
-    const STARTING_POINT: f32 = -20.;
-    const FLOOR: f32 = 479.;
-    const RUNNING_SPEED: f32 = 3.;
+    use super::super::HEIGHT;
+    use super::FLOOR;
+    const PLAYER_HEIGHT: f32 = HEIGHT - FLOOR;
+    const RUNNING_SPEED: f32 = 4.;
     const JUMP_SPEED: f32 = -25.;
     const GRAVITY: f32 = 1.;
+    const TERMINAL_VELOCITY: f32 = 20.;
 
     // フレーム名
     const IDLE_FRAME_NAME: &str = "Idle";
@@ -342,7 +392,7 @@ mod red_hat_boy_states {
     pub(super) struct RedHatBoyContext {
         pub(super) frame: u8,
         pub(super) position: Point,
-        velocity: Point,
+        pub(super) velocity: Point,
     }
 
     impl RedHatBoyContext {
@@ -371,13 +421,14 @@ mod red_hat_boy_states {
             self.velocity.y = JUMP_SPEED;
         }
 
-        fn land(&mut self) {
-            self.velocity.y = 0.;
-            self.position.y = FLOOR;
+        fn land_on(&mut self, y: f32) {
+            self.position.y = y;
         }
 
         fn fall(&mut self) {
-            self.velocity.y += GRAVITY;
+            if self.velocity.y < TERMINAL_VELOCITY {
+                self.velocity.y += GRAVITY;
+            }
         }
 
         fn stop(&mut self) {
@@ -388,14 +439,11 @@ mod red_hat_boy_states {
 
     // 初期状態の定義
     impl RedHatBoyState<Idle> {
-        pub(super) fn new() -> Self {
+        pub(super) fn new(position: Point) -> Self {
             Self {
                 context: RedHatBoyContext {
                     frame: 0,
-                    position: Point {
-                        x: STARTING_POINT,
-                        y: FLOOR,
-                    },
+                    position,
                     velocity: Point { x: 0., y: 0. },
                 },
                 _state: Idle,
@@ -431,6 +479,9 @@ mod red_hat_boy_states {
             let mut context = self.context.clone();
             context.update_frame(RUNNING_FRAME_COUNT);
             context.update_position();
+            if context.position.y >= FLOOR {
+                context.land_on(FLOOR);
+            }
             RedHatBoyState {
                 context,
                 _state: Running,
@@ -476,6 +527,15 @@ mod red_hat_boy_states {
             }
         }
 
+        pub(super) fn land_on(&self, y: f32) -> RedHatBoyState<Running> {
+            let mut context = self.context.clone();
+            context.land_on(y - PLAYER_HEIGHT);
+            RedHatBoyState {
+                context,
+                _state: Running,
+            }
+        }
+
         pub(super) fn knock_out(&self) -> RedHatBoyState<Falling> {
             let mut context = self.context.clone();
             context.reset_frame();
@@ -497,7 +557,11 @@ mod red_hat_boy_states {
             let mut context = self.context.clone();
             context.update_frame(SLIDING_FRAME_COUNT);
             context.update_position();
+            if context.position.y >= FLOOR {
+                context.land_on(FLOOR);
+            }
             if context.frame == 0 {
+                context.reset_frame();
                 SlidngEndState::Complete(RedHatBoyState {
                     context,
                     _state: Running,
@@ -507,6 +571,15 @@ mod red_hat_boy_states {
                     context,
                     _state: Sliding,
                 })
+            }
+        }
+
+        pub(super) fn land_on(&self, y: f32) -> RedHatBoyState<Sliding> {
+            let mut context = self.context.clone();
+            context.land_on(y - PLAYER_HEIGHT);
+            RedHatBoyState {
+                context,
+                _state: Sliding,
             }
         }
 
@@ -529,11 +602,14 @@ mod red_hat_boy_states {
     impl RedHatBoyState<Jumping> {
         pub(super) fn update(&self) -> JumpEndState {
             let mut context = self.context.clone();
-            context.update_frame(JUMPING_FRAME_COUNT);
+            if context.frame < JUMPING_FRAME_COUNT - 1 {
+                context.update_frame(JUMPING_FRAME_COUNT);
+            }
             context.update_position();
             context.fall();
             if context.position.y >= FLOOR {
-                context.land();
+                context.land_on(FLOOR);
+                context.reset_frame();
                 JumpEndState::Complete(RedHatBoyState {
                     context,
                     _state: Running,
@@ -545,6 +621,7 @@ mod red_hat_boy_states {
                 })
             }
         }
+
         pub(super) fn knock_out(&self) -> RedHatBoyState<Falling> {
             let mut context = self.context.clone();
             context.reset_frame();
@@ -552,6 +629,16 @@ mod red_hat_boy_states {
             RedHatBoyState {
                 context,
                 _state: Falling,
+            }
+        }
+
+        pub(super) fn land_on(&self, y: f32) -> RedHatBoyState<Running> {
+            let mut context = self.context.clone();
+            context.reset_frame();
+            context.land_on(y - PLAYER_HEIGHT);
+            RedHatBoyState {
+                context,
+                _state: Running,
             }
         }
     }
@@ -566,6 +653,11 @@ mod red_hat_boy_states {
             let mut context = self.context.clone();
             context.update_frame(FALLING_FRAME_COUNT);
             context.update_position();
+            if context.position.y < FLOOR {
+                context.fall();
+            } else {
+                context.land_on(FLOOR);
+            }
             if context.frame == FALLING_FRAME_COUNT - 1 {
                 FallingEndState::Complete(RedHatBoyState {
                     context,

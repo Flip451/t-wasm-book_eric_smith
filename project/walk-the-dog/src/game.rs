@@ -3,18 +3,33 @@ use async_trait::async_trait;
 
 use crate::engine::{
     key_state::KeyState,
-    renderer::{Rect, Renderer},
+    renderer::{Point, Rect, Renderer},
     Game,
 };
 
-use self::{background::Background, rhb::RedHatBoy, objects::GameObject};
+use self::{
+    background::Background,
+    objects::{platform::Platform, GameObject},
+    rhb::{RedHatBoy, FLOOR, STARTING_POINT},
+};
 
 mod background;
+mod bounding_box;
 mod objects;
 mod rhb;
 mod sprite;
 
 use objects::stone::Stone;
+
+const WIDTH: f32 = 600.;
+const HEIGHT: f32 = 600.;
+
+const LOW_PLATFORM: f32 = 420.;
+const HIGH_PLATFORM: f32 = 375.;
+const FIRST_PLATFORM: f32 = 200.;
+
+const FIRST_STONE_X: f32 = 350.;
+const FIRST_STONE_Y: f32 = 366.;
 
 pub enum WalkTheDog {
     Loading,
@@ -25,6 +40,7 @@ pub struct Walk {
     rhb: RedHatBoy,
     background: Background,
     stone: Stone,
+    platform: Platform,
 }
 
 impl WalkTheDog {
@@ -38,10 +54,28 @@ impl Game for WalkTheDog {
     async fn initialize(&self) -> Result<Box<dyn Game>> {
         match self {
             Self::Loading => {
-                let rhb = RedHatBoy::new().await?;
-                let stone = Stone::new().await?;
+                let rhb = RedHatBoy::new(Point {
+                    x: STARTING_POINT,
+                    y: FLOOR,
+                })
+                .await?;
+                let stone = Stone::new(Point {
+                    x: FIRST_STONE_X,
+                    y: FIRST_STONE_Y,
+                })
+                .await?;
                 let background = Background::new().await?;
-                Ok(Box::new(WalkTheDog::Loaded(Walk { rhb, background, stone })))
+                let platform = Platform::new(Point {
+                    x: FIRST_PLATFORM,
+                    y: LOW_PLATFORM,
+                })
+                .await?;
+                Ok(Box::new(WalkTheDog::Loaded(Walk {
+                    rhb,
+                    background,
+                    stone,
+                    platform,
+                })))
             }
             Self::Loaded(_) => Err(anyhow!("Error: Game is already initialized")),
         }
@@ -50,10 +84,29 @@ impl Game for WalkTheDog {
     fn update(&mut self, keystate: &KeyState) {
         match self {
             Self::Loading => {}
-            Self::Loaded(Walk { rhb, background: _, stone }) => {
+            Self::Loaded(Walk {
+                rhb,
+                background: _,
+                stone,
+                platform,
+            }) => {
                 rhb.update();
 
-                if rhb.bounding_box().intersects(&stone.bounding_box()) {
+                // rhb のbounding box と platform の bounding box が重なっているかどうかを判定
+                if let Some((rhb_rect, platform_rect)) =
+                    rhb.bounding_box().intersects(&platform.bounding_box())
+                {
+                    // rhb が platform より上にいるかどうかを判定
+                    // かつ rhb が落下しているかどうかを判定
+                    if rhb_rect.y < platform_rect.y && rhb.is_falling() {
+                        rhb.land_on(platform_rect.y);
+                    } else {
+                        rhb.knock_out();
+                    }
+                }
+
+                // rhb のbounding box と stone の bounding box が重なっているかどうかを判定
+                if let Some((_, _)) = rhb.bounding_box().intersects(&stone.bounding_box()) {
                     rhb.knock_out();
                 }
 
@@ -79,17 +132,23 @@ impl Game for WalkTheDog {
     fn draw(&self, renderer: &Renderer) {
         match self {
             WalkTheDog::Loading => {}
-            WalkTheDog::Loaded(Walk { rhb, background, stone }) => {
+            WalkTheDog::Loaded(Walk {
+                rhb,
+                background,
+                stone,
+                platform,
+            }) => {
                 renderer.clear(&Rect {
                     x: 0.,
                     y: 0.,
-                    w: 600.,
-                    h: 600.,
+                    w: WIDTH,
+                    h: HEIGHT,
                 });
 
                 background.draw(renderer).expect("Error drawing background");
                 rhb.draw(renderer).expect("Error drawing red hat boy");
                 stone.draw(renderer).expect("Error drawing stone");
+                platform.draw(renderer).expect("Error drawing platform");
             }
         }
     }

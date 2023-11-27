@@ -109,10 +109,8 @@ pub mod renderer {
         }
 
         pub fn draw_rect(&self, rect: &Rect) {
-            self.context
-                .begin_path();
-            self.context
-                .set_stroke_style(&"red".into());
+            self.context.begin_path();
+            self.context.set_stroke_style(&"red".into());
             self.context
                 .rect(rect.x.into(), rect.y.into(), rect.w.into(), rect.h.into());
             self.context.stroke();

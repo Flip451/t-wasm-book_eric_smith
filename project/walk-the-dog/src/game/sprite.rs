@@ -18,26 +18,30 @@ pub struct Cell {
     sprite_source_size: SheetRect,
 }
 
-type RectOnCanvas = Rect;
-type RectOnSheet = Rect;
-
 impl Cell {
-    pub fn to_rect_on_sheet(&self) -> RectOnSheet {
-        RectOnSheet {
-            x: self.frame.x as f32,
-            y: self.frame.y as f32,
-            w: self.frame.w as f32,
-            h: self.frame.h as f32,
+    pub fn to_rect_on_canvas(&self, x: f32, y: f32, w: f32, h: f32) -> Rect {
+        Rect {
+            x: x + self.sprite_source_size.x as f32,
+            y: y + self.sprite_source_size.y as f32,
+            w,
+            h,
         }
     }
 
-    pub fn to_rect_on_canvas(&self, x: f32, y: f32) -> RectOnCanvas {
-        RectOnCanvas {
-            x: x + self.sprite_source_size.x as f32,
-            y: y + self.sprite_source_size.y as f32,
-            w: self.sprite_source_size.w as f32,
-            h: self.sprite_source_size.h as f32,
-        }
+    pub fn x(&self) -> f32 {
+        self.frame.x as f32
+    }
+
+    pub fn y(&self) -> f32 {
+        self.frame.y as f32
+    }
+
+    pub fn width(&self) -> f32 {
+        self.frame.w as f32
+    }
+
+    pub fn height(&self) -> f32 {
+        self.frame.h as f32
     }
 }
 
