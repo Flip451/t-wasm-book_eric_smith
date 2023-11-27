@@ -16,3 +16,7 @@ pub trait GameObject {
     fn bounding_box(&self) -> BoundingBox;
     fn draw(&self, renderer: &Renderer) -> Result<()>;
 }
+
+pub trait Obstacle {
+    fn update(&mut self, velocity: f32);
+}

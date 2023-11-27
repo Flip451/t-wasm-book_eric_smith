@@ -244,6 +244,18 @@ pub mod renderer {
             pub fn height(&self) -> f32 {
                 self.element.height() as f32
             }
+
+            pub fn move_horizontally(&mut self, velocity: f32) {
+                self.position.x += velocity;
+            }
+
+            pub fn set_x(&mut self, x: f32) {
+                self.position.x = x;
+            }
+
+            pub(crate) fn right(&self) -> f32 {
+                self.position.x + self.width()
+            }
         }
     }
 }

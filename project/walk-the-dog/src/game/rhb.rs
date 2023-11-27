@@ -117,6 +117,10 @@ impl RedHatBoy {
         self.state_machine.context().velocity.y > 0.
     }
 
+    pub fn walking_speed(&self) -> f32 {
+        self.state_machine.context().velocity.x
+    }
+
     pub fn update(&mut self) {
         self.state_machine.transition(Event::Update);
     }
@@ -405,7 +409,7 @@ mod red_hat_boy_states {
         }
 
         fn update_position(&mut self) {
-            self.position.x += self.velocity.x;
+            // self.position.x += self.velocity.x;
             self.position.y += self.velocity.y;
         }
 

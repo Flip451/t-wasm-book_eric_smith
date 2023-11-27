@@ -6,7 +6,7 @@ use crate::{engine::renderer::{
     Point, Rect, Renderer,
 }, game::bounding_box::BoundingBox};
 
-use super::GameObject;
+use super::{GameObject, Obstacle};
 
 pub struct Stone {
     image: Image,
@@ -40,5 +40,13 @@ impl GameObject for Stone {
         #[cfg(feature = "collision_debug")]
         renderer.draw_rect(&self.bounding_box);
         self.image.draw(renderer)
+    }
+}
+
+impl Obstacle for Stone {
+    fn update(&mut self, velocity: f32) {
+        self.image.move_horizontally(velocity);
+        self.bounding_box.x = self.image.position().x;
+        self.bounding_box.y = self.image.position().y;
     }
 }

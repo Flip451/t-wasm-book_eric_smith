@@ -9,7 +9,7 @@ use crate::{
     game::{bounding_box::BoundingBox, sprite::SpriteSheet},
 };
 
-use super::GameObject;
+use super::{GameObject, Obstacle};
 
 pub struct Platform {
     sprite_sheet: SpriteSheet,
@@ -103,5 +103,11 @@ impl GameObject for Platform {
         self.bounding_box().draw(renderer)?;
 
         Ok(())
+    }
+}
+
+impl Obstacle for Platform {
+    fn update(&mut self, velocity: f32) {
+        self.position.x += velocity;
     }
 }

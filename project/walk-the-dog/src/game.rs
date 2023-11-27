@@ -9,7 +9,7 @@ use crate::engine::{
 
 use self::{
     background::Background,
-    objects::{platform::Platform, GameObject},
+    objects::{platform::Platform, GameObject, Obstacle},
     rhb::{RedHatBoy, FLOOR, STARTING_POINT},
 };
 
@@ -41,6 +41,12 @@ pub struct Walk {
     background: Background,
     stone: Stone,
     platform: Platform,
+}
+
+impl Walk {
+    fn velocity(&self) -> f32 {
+        - self.rhb.walking_speed()
+    }
 }
 
 impl WalkTheDog {
@@ -84,13 +90,20 @@ impl Game for WalkTheDog {
     fn update(&mut self, keystate: &KeyState) {
         match self {
             Self::Loading => {}
-            Self::Loaded(Walk {
-                rhb,
-                background: _,
-                stone,
-                platform,
-            }) => {
+            Self::Loaded(walk) => {
+                let velocity = walk.velocity();
+
+                let Walk {
+                    rhb,
+                    background,
+                    stone,
+                    platform,
+                } = walk;
                 rhb.update();
+
+                platform.update(velocity);
+                stone.update(velocity);
+                background.update(velocity);
 
                 // rhb のbounding box と platform の bounding box が重なっているかどうかを判定
                 if let Some((rhb_rect, platform_rect)) =
