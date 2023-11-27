@@ -150,10 +150,10 @@ pub mod renderer {
 
     #[derive(Clone)]
     pub struct Rect {
-        pub x: f32,
-        pub y: f32,
-        pub w: f32,
-        pub h: f32,
+        pub x: i16,
+        pub y: i16,
+        pub w: i16,
+        pub h: i16,
     }
 
     impl Rect {
@@ -167,8 +167,8 @@ pub mod renderer {
 
     #[derive(Clone, Copy)]
     pub struct Point {
-        pub x: f32,
-        pub y: f32,
+        pub x: i16,
+        pub y: i16,
     }
 
     pub mod image {
@@ -237,23 +237,23 @@ pub mod renderer {
                 &self.position
             }
 
-            pub fn width(&self) -> f32 {
-                self.element.width() as f32
+            pub fn width(&self) -> i16 {
+                self.element.width() as i16
             }
 
-            pub fn height(&self) -> f32 {
-                self.element.height() as f32
+            pub fn height(&self) -> i16 {
+                self.element.height() as i16
             }
 
-            pub fn move_horizontally(&mut self, velocity: f32) {
+            pub fn move_horizontally(&mut self, velocity: i16) {
                 self.position.x += velocity;
             }
 
-            pub fn set_x(&mut self, x: f32) {
+            pub fn set_x(&mut self, x: i16) {
                 self.position.x = x;
             }
 
-            pub(crate) fn right(&self) -> f32 {
+            pub(crate) fn right(&self) -> i16 {
                 self.position.x + self.width()
             }
         }

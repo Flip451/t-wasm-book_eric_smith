@@ -12,8 +12,8 @@ use super::objects::GameObject;
 use super::sprite::{Cell, SpriteSheet};
 
 // 座標系関連
-pub const STARTING_POINT: f32 = -20.;
-pub const FLOOR: f32 = 479.;
+pub const STARTING_POINT: i16 = -20;
+pub const FLOOR: i16 = 479;
 
 pub struct RedHatBoy {
     state_machine: RedHatBoyStateMachine,
@@ -43,10 +43,10 @@ impl GameObject for RedHatBoy {
     }
 
     fn bounding_box(&self) -> BoundingBox {
-        const X_OFFSET: f32 = 18.;
-        const Y_OFFSET: f32 = 14.;
-        const WIDTH_OFFSET: f32 = -28.;
-        const HEIGHT_OFFSET: f32 = 0.;
+        const X_OFFSET: i16 = 18;
+        const Y_OFFSET: i16 = 14;
+        const WIDTH_OFFSET: i16 = -28;
+        const HEIGHT_OFFSET: i16 = 0;
 
         let sprite = self.current_sprite();
         let mut raw_rect = sprite.to_rect_on_canvas(
@@ -73,10 +73,10 @@ impl GameObject for RedHatBoy {
         renderer.draw_image(
             &self.image,
             &Rect {
-                x: sprite.x() as f32,
-                y: sprite.y() as f32,
-                w: sprite.width() as f32,
-                h: sprite.height() as f32,
+                x: sprite.x(),
+                y: sprite.y(),
+                w: sprite.width(),
+                h: sprite.height(),
             },
             &sprite.to_rect_on_canvas(
                 self.state_machine.context().position.x,
@@ -114,10 +114,10 @@ impl RedHatBoy {
     }
 
     pub fn is_falling(&self) -> bool {
-        self.state_machine.context().velocity.y > 0.
+        self.state_machine.context().velocity.y > 0
     }
 
-    pub fn walking_speed(&self) -> f32 {
+    pub fn walking_speed(&self) -> i16 {
         self.state_machine.context().velocity.x
     }
 
@@ -145,7 +145,7 @@ impl RedHatBoy {
         self.state_machine.transition(Event::KnockOut);
     }
 
-    pub fn land_on(&mut self, y: f32) {
+    pub fn land_on(&mut self, y: i16) {
         self.state_machine.transition(Event::Land(y));
     }
 }
@@ -307,7 +307,7 @@ enum Event {
     Jump,
     Update,
     KnockOut,
-    Land(f32),
+    Land(i16),
 }
 
 mod red_hat_boy_states {
@@ -316,11 +316,11 @@ mod red_hat_boy_states {
     // 座標系関連
     use super::super::HEIGHT;
     use super::FLOOR;
-    const PLAYER_HEIGHT: f32 = HEIGHT - FLOOR;
-    const RUNNING_SPEED: f32 = 4.;
-    const JUMP_SPEED: f32 = -25.;
-    const GRAVITY: f32 = 1.;
-    const TERMINAL_VELOCITY: f32 = 20.;
+    const PLAYER_HEIGHT: i16 = HEIGHT - FLOOR;
+    const RUNNING_SPEED: i16 = 4;
+    const JUMP_SPEED: i16 = -25;
+    const GRAVITY: i16 = 1;
+    const TERMINAL_VELOCITY: i16 = 20;
 
     // フレーム名
     const IDLE_FRAME_NAME: &str = "Idle";
@@ -425,7 +425,7 @@ mod red_hat_boy_states {
             self.velocity.y = JUMP_SPEED;
         }
 
-        fn land_on(&mut self, y: f32) {
+        fn land_on(&mut self, y: i16) {
             self.position.y = y;
         }
 
@@ -436,8 +436,8 @@ mod red_hat_boy_states {
         }
 
         fn stop(&mut self) {
-            self.velocity.x = 0.;
-            self.velocity.y = 0.
+            self.velocity.x = 0;
+            self.velocity.y = 0;
         }
     }
 
@@ -448,7 +448,7 @@ mod red_hat_boy_states {
                 context: RedHatBoyContext {
                     frame: 0,
                     position,
-                    velocity: Point { x: 0., y: 0. },
+                    velocity: Point { x: 0, y: 0 },
                 },
                 _state: Idle,
             }
@@ -531,7 +531,7 @@ mod red_hat_boy_states {
             }
         }
 
-        pub(super) fn land_on(&self, y: f32) -> RedHatBoyState<Running> {
+        pub(super) fn land_on(&self, y: i16) -> RedHatBoyState<Running> {
             let mut context = self.context.clone();
             context.land_on(y - PLAYER_HEIGHT);
             RedHatBoyState {
@@ -578,7 +578,7 @@ mod red_hat_boy_states {
             }
         }
 
-        pub(super) fn land_on(&self, y: f32) -> RedHatBoyState<Sliding> {
+        pub(super) fn land_on(&self, y: i16) -> RedHatBoyState<Sliding> {
             let mut context = self.context.clone();
             context.land_on(y - PLAYER_HEIGHT);
             RedHatBoyState {
@@ -636,7 +636,7 @@ mod red_hat_boy_states {
             }
         }
 
-        pub(super) fn land_on(&self, y: f32) -> RedHatBoyState<Running> {
+        pub(super) fn land_on(&self, y: i16) -> RedHatBoyState<Running> {
             let mut context = self.context.clone();
             context.reset_frame();
             context.land_on(y - PLAYER_HEIGHT);

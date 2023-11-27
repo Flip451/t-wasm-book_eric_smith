@@ -19,29 +19,29 @@ pub struct Cell {
 }
 
 impl Cell {
-    pub fn to_rect_on_canvas(&self, x: f32, y: f32, w: f32, h: f32) -> Rect {
+    pub fn to_rect_on_canvas(&self, x: i16, y: i16, w: i16, h: i16) -> Rect {
         Rect {
-            x: x + self.sprite_source_size.x as f32,
-            y: y + self.sprite_source_size.y as f32,
+            x: x + self.sprite_source_size.x,
+            y: y + self.sprite_source_size.y,
             w,
             h,
         }
     }
 
-    pub fn x(&self) -> f32 {
-        self.frame.x as f32
+    pub fn x(&self) -> i16 {
+        self.frame.x
     }
 
-    pub fn y(&self) -> f32 {
-        self.frame.y as f32
+    pub fn y(&self) -> i16 {
+        self.frame.y
     }
 
-    pub fn width(&self) -> f32 {
-        self.frame.w as f32
+    pub fn width(&self) -> i16 {
+        self.frame.w
     }
 
-    pub fn height(&self) -> f32 {
-        self.frame.h as f32
+    pub fn height(&self) -> i16 {
+        self.frame.h
     }
 }
 

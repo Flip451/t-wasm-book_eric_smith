@@ -18,5 +18,5 @@ pub trait GameObject {
 }
 
 pub trait Obstacle {
-    fn update(&mut self, velocity: f32);
+    fn update(&mut self, velocity: i16);
 }

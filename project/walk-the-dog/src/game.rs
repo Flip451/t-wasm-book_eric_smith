@@ -21,15 +21,15 @@ mod sprite;
 
 use objects::stone::Stone;
 
-const WIDTH: f32 = 600.;
-const HEIGHT: f32 = 600.;
+const WIDTH: i16 = 600;
+const HEIGHT: i16 = 600;
 
-const LOW_PLATFORM: f32 = 420.;
-const HIGH_PLATFORM: f32 = 375.;
-const FIRST_PLATFORM: f32 = 200.;
+const LOW_PLATFORM: i16 = 420;
+const HIGH_PLATFORM: i16 = 375;
+const FIRST_PLATFORM: i16 = 300;
 
-const FIRST_STONE_X: f32 = 350.;
-const FIRST_STONE_Y: f32 = 366.;
+const FIRST_STONE_X: i16 = 450;
+const FIRST_STONE_Y: i16 = 366;
 
 pub enum WalkTheDog {
     Loading,
@@ -44,7 +44,7 @@ pub struct Walk {
 }
 
 impl Walk {
-    fn velocity(&self) -> f32 {
+    fn velocity(&self) -> i16 {
         - self.rhb.walking_speed()
     }
 }
@@ -152,8 +152,8 @@ impl Game for WalkTheDog {
                 platform,
             }) => {
                 renderer.clear(&Rect {
-                    x: 0.,
-                    y: 0.,
+                    x: 0,
+                    y: 0,
                     w: WIDTH,
                     h: HEIGHT,
                 });

@@ -44,7 +44,7 @@ impl GameObject for Stone {
 }
 
 impl Obstacle for Stone {
-    fn update(&mut self, velocity: f32) {
+    fn update(&mut self, velocity: i16) {
         self.image.move_horizontally(velocity);
         self.bounding_box.x = self.image.position().x;
         self.bounding_box.y = self.image.position().y;

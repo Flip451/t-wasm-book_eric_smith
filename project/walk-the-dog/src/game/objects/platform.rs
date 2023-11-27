@@ -33,8 +33,8 @@ impl GameObject for Platform {
     }
 
     fn bounding_box(&self) -> BoundingBox {
-        const X_OFFSET: f32 = 60.;
-        const END_HEIGHT: f32 = 54.;
+        const X_OFFSET: i16 = 60;
+        const END_HEIGHT: i16 = 54;
 
         let sprite = self
             .sprite_sheet
@@ -45,7 +45,7 @@ impl GameObject for Platform {
         let raw_rect = sprite.to_rect_on_canvas(
             self.position.x,
             self.position.y,
-            sprite.width() * 3.,
+            sprite.width() * 3,
             sprite.height(),
         );
 
@@ -61,7 +61,7 @@ impl GameObject for Platform {
         bounding_box.add(Rect {
             x: raw_rect.x + X_OFFSET,
             y: raw_rect.y,
-            w: raw_rect.w - X_OFFSET * 2.,
+            w: raw_rect.w - X_OFFSET * 2,
             h: raw_rect.h,
         });
 
@@ -87,13 +87,13 @@ impl GameObject for Platform {
             &Rect {
                 x: sprite.x(),
                 y: sprite.y(),
-                w: sprite.width() * 3.,
+                w: sprite.width() * 3,
                 h: sprite.height(),
             },
             &sprite.to_rect_on_canvas(
                 self.position.x,
                 self.position.y,
-                sprite.width() * 3.,
+                sprite.width() * 3,
                 sprite.height(),
             ),
         )?;
@@ -107,7 +107,7 @@ impl GameObject for Platform {
 }
 
 impl Obstacle for Platform {
-    fn update(&mut self, velocity: f32) {
+    fn update(&mut self, velocity: i16) {
         self.position.x += velocity;
     }
 }
