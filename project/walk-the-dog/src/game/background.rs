@@ -19,4 +19,8 @@ impl Background {
     pub fn draw(&self, renderer: &Renderer) -> Result<()> {
         self.image.draw(renderer)
     }
+
+    pub fn update(&mut self, velocity: f32) {
+        self.image.move_horizontally(velocity);
+    }
 }

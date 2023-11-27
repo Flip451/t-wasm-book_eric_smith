@@ -244,6 +244,10 @@ pub mod renderer {
             pub fn height(&self) -> f32 {
                 self.element.height() as f32
             }
+
+            pub fn move_horizontally(&mut self, velocity: f32) {
+                self.position.x += velocity;
+            }
         }
     }
 }
