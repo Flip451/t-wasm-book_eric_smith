@@ -313,7 +313,7 @@ mod red_hat_boy_states {
     use super::super::HEIGHT;
     use super::FLOOR;
     const PLAYER_HEIGHT: f32 = HEIGHT - FLOOR;
-    const RUNNING_SPEED: f32 = 3.;
+    const RUNNING_SPEED: f32 = 4.;
     const JUMP_SPEED: f32 = -25.;
     const GRAVITY: f32 = 1.;
     const TERMINAL_VELOCITY: f32 = 20.;

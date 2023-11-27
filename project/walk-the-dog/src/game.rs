@@ -24,6 +24,11 @@ use objects::stone::Stone;
 const WIDTH: f32 = 600.;
 const HEIGHT: f32 = 600.;
 
+const LOW_PLATFORM: f32 = 420.;
+const HIGH_PLATFORM: f32 = 375.;
+const FIRST_PLATFORM: f32 = 370.;
+
+
 pub enum WalkTheDog {
     Loading,
     Loaded(Walk),
@@ -54,7 +59,11 @@ impl Game for WalkTheDog {
                 .await?;
                 let stone = Stone::new(Point { x: 150., y: 546. }).await?;
                 let background = Background::new().await?;
-                let platform = Platform::new(Point { x: 200., y: 400. }).await?;
+                let platform = Platform::new(Point {
+                    x: FIRST_PLATFORM,
+                    y: LOW_PLATFORM,
+                })
+                .await?;
                 Ok(Box::new(WalkTheDog::Loaded(Walk {
                     rhb,
                     background,
