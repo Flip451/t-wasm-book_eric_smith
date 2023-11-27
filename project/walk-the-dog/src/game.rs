@@ -39,8 +39,7 @@ pub enum WalkTheDog {
 pub struct Walk {
     rhb: RedHatBoy,
     background: Background,
-    stone: Stone,
-    platform: Platform,
+    obstacles: Vec<Box<dyn Obstacle>>,
 }
 
 impl Walk {
@@ -65,22 +64,27 @@ impl Game for WalkTheDog {
                     y: FLOOR,
                 })
                 .await?;
+
+                let background = Background::new().await?;
+
+                let mut obstacles = Vec::<Box<dyn Obstacle>>::new();
                 let stone = Stone::new(Point {
                     x: FIRST_STONE_X,
                     y: FIRST_STONE_Y,
-                })
-                .await?;
-                let background = Background::new().await?;
+                }).await?;
+                obstacles.push(Box::new(stone));
+
                 let platform = Platform::new(Point {
                     x: FIRST_PLATFORM,
                     y: LOW_PLATFORM,
                 })
                 .await?;
+                obstacles.push(Box::new(platform));
+
                 Ok(Box::new(WalkTheDog::Loaded(Walk {
                     rhb,
                     background,
-                    stone,
-                    platform,
+                    obstacles,
                 })))
             }
             Self::Loaded(_) => Err(anyhow!("Error: Game is already initialized")),
@@ -96,18 +100,19 @@ impl Game for WalkTheDog {
                 let Walk {
                     rhb,
                     background,
-                    stone,
-                    platform,
+                    obstacles,
                 } = walk;
                 rhb.update();
 
-                platform.update_position(velocity);
-                stone.update_position(velocity);
                 background.update(velocity);
 
-                // 障害物との衝突判定
-                platform.check_intersection(rhb);
-                stone.check_intersection(rhb);
+                // 画面外に出た障害物を削除する
+                obstacles.retain(|obstacle| {obstacle.bounding_box().right() > 0});
+
+                for obstacle in obstacles {
+                    obstacle.update_position(velocity);
+                    obstacle.check_intersection(rhb);
+                }
 
                 if keystate.is_pressed("ArrowRight") {
                     rhb.run_right();
@@ -134,15 +139,15 @@ impl Game for WalkTheDog {
             WalkTheDog::Loaded(Walk {
                 rhb,
                 background,
-                stone,
-                platform,
+                obstacles,
             }) => {
                 renderer.clear(&Rect::new_from_x_y(0, 0, WIDTH, HEIGHT));
 
                 background.draw(renderer).expect("Error drawing background");
                 rhb.draw(renderer).expect("Error drawing red hat boy");
-                stone.draw(renderer).expect("Error drawing stone");
-                platform.draw(renderer).expect("Error drawing platform");
+                obstacles.iter().for_each(|obstacle| {
+                    obstacle.draw(renderer).expect("Error drawing obstacle")
+                });
             }
         }
     }

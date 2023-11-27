@@ -34,4 +34,8 @@ impl BoundingBox {
         });
         Ok(())
     }
+
+    pub fn right(&self) -> i16 {
+        self.boxes.iter().map(|rect| rect.right()).max().unwrap_or(0)
+    }
 }
