@@ -653,6 +653,11 @@ mod red_hat_boy_states {
             let mut context = self.context.clone();
             context.update_frame(FALLING_FRAME_COUNT);
             context.update_position();
+            if context.position.y < FLOOR {
+                context.fall();
+            } else {
+                context.land_on(FLOOR);
+            }
             if context.frame == FALLING_FRAME_COUNT - 1 {
                 FallingEndState::Complete(RedHatBoyState {
                     context,

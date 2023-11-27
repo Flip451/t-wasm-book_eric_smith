@@ -26,8 +26,10 @@ const HEIGHT: f32 = 600.;
 
 const LOW_PLATFORM: f32 = 420.;
 const HIGH_PLATFORM: f32 = 375.;
-const FIRST_PLATFORM: f32 = 370.;
+const FIRST_PLATFORM: f32 = 200.;
 
+const FIRST_STONE_X: f32 = 350.;
+const FIRST_STONE_Y: f32 = 366.;
 
 pub enum WalkTheDog {
     Loading,
@@ -57,7 +59,11 @@ impl Game for WalkTheDog {
                     y: FLOOR,
                 })
                 .await?;
-                let stone = Stone::new(Point { x: 150., y: 546. }).await?;
+                let stone = Stone::new(Point {
+                    x: FIRST_STONE_X,
+                    y: FIRST_STONE_Y,
+                })
+                .await?;
                 let background = Background::new().await?;
                 let platform = Platform::new(Point {
                     x: FIRST_PLATFORM,
