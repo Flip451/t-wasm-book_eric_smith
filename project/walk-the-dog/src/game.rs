@@ -3,35 +3,30 @@ use std::rc::Rc;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 
-use crate::engine::{
-    key_state::KeyState,
-    renderer::{sprite::Sprite, Point, Rect, Renderer},
-    Game,
+use crate::{
+    engine::{
+        key_state::KeyState,
+        renderer::{sprite::Sprite, Point, Rect, Renderer},
+        Game,
+    },
+    segments::two_stone_and_low_platform,
 };
 
 use self::{
     background::Background,
-    bounding_box::BoundingBox,
     objects::{platform::Platform, GameObject, Obstacle},
     rhb::{RedHatBoy, FLOOR, STARTING_POINT},
 };
 
 mod background;
-mod bounding_box;
-mod objects;
+pub mod bounding_box;
+pub mod objects;
 mod rhb;
 
 use objects::stone::Stone;
 
 const WIDTH: i16 = 600;
 const HEIGHT: i16 = 600;
-
-const LOW_PLATFORM: i16 = 420;
-const HIGH_PLATFORM: i16 = 375;
-const FIRST_PLATFORM: i16 = 300;
-
-const FIRST_STONE_X: i16 = 450;
-const FIRST_STONE_Y: i16 = 366;
 
 pub enum WalkTheDog {
     Loading,
@@ -73,33 +68,11 @@ impl Game for WalkTheDog {
 
                 let background = Background::new().await?;
 
-                let mut obstacles = Vec::<Box<dyn Obstacle>>::new();
-
                 let stone_image = Stone::load_image().await?;
-                let stone = Stone::new(
-                    stone_image,
-                    Point {
-                        x: FIRST_STONE_X,
-                        y: FIRST_STONE_Y,
-                    },
-                );
-                obstacles.push(Box::new(stone));
 
                 let platform_sprite = Platform::load_sprite().await?;
-                let platform = Platform::new(
-                    Rc::clone(&platform_sprite),
-                    Point {
-                        x: FIRST_PLATFORM,
-                        y: LOW_PLATFORM,
-                    },
-                    &["13.png", "14.png", "15.png"],
-                    BoundingBox::new(vec![
-                        Rect::new_from_x_y(0, 0, 60, 54),
-                        Rect::new_from_x_y(60, 0, 384 - (60 * 2), 93),
-                        Rect::new_from_x_y(384 - 60, 0, 60, 54),
-                    ]),
-                );
-                obstacles.push(Box::new(platform));
+
+                let obstacles = two_stone_and_low_platform(stone_image, platform_sprite.clone(), 0);
 
                 Ok(Box::new(WalkTheDog::Loaded(Walk {
                     rhb,
