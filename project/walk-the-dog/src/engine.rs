@@ -301,6 +301,91 @@ pub mod renderer {
             }
         }
     }
+
+    pub mod sprite {
+        use anyhow::Result;
+        use serde::Deserialize;
+        use std::collections::HashMap;
+        use web_sys::HtmlImageElement;
+
+        use crate::engine::renderer::Rect;
+
+        use super::Renderer;
+
+        #[derive(Deserialize)]
+        struct SheetRect {
+            x: i16,
+            y: i16,
+            w: i16,
+            h: i16,
+        }
+
+        #[derive(Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        pub struct Cell {
+            frame: SheetRect,
+            sprite_source_size: SheetRect,
+        }
+
+        impl Cell {
+            pub fn to_rect_on_canvas(&self, x: i16, y: i16, w: i16, h: i16) -> Rect {
+                Rect::new_from_x_y(
+                    x + self.sprite_source_size.x,
+                    y + self.sprite_source_size.y,
+                    w,
+                    h,
+                )
+            }
+
+            pub fn x(&self) -> i16 {
+                self.frame.x
+            }
+
+            pub fn y(&self) -> i16 {
+                self.frame.y
+            }
+
+            pub fn width(&self) -> i16 {
+                self.frame.w
+            }
+
+            pub fn height(&self) -> i16 {
+                self.frame.h
+            }
+        }
+
+        #[derive(Deserialize)]
+        pub struct SpriteSheet {
+            pub frames: HashMap<String, Cell>,
+        }
+
+        pub struct Sprite {
+            sprite_sheet: SpriteSheet,
+            image: HtmlImageElement,
+        }
+
+        impl Sprite {
+            pub fn new(sprite_sheet: SpriteSheet, image: HtmlImageElement) -> Self {
+                Self {
+                    sprite_sheet,
+                    image,
+                }
+            }
+
+            pub fn cell(&self, name: &str) -> Option<&Cell> {
+                self.sprite_sheet.frames.get(name)
+            }
+
+            pub fn draw(
+                &self,
+                renderer: &Renderer,
+                source: &Rect,
+                destination: &Rect,
+            ) -> Result<()> {
+                renderer.draw_image(&self.image, source, destination)
+            }
+        }
+    }
 }
 
 pub mod key_state {

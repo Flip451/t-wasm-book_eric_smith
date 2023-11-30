@@ -1,19 +1,21 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use gloo_utils::format::JsValueSerdeExt;
-use web_sys::HtmlImageElement;
 
 use crate::{
     browser,
-    engine::renderer::{image, Point, Rect, Renderer},
-    game::{bounding_box::BoundingBox, sprite::SpriteSheet},
+    engine::renderer::{
+        image,
+        sprite::{Sprite, SpriteSheet},
+        Point, Rect, Renderer,
+    },
+    game::bounding_box::BoundingBox,
 };
 
 use super::{GameObject, Obstacle};
 
 pub struct Platform {
-    sprite_sheet: SpriteSheet,
-    image: HtmlImageElement,
+    sprite: Sprite,
     position: Point,
 }
 
@@ -22,25 +24,17 @@ impl GameObject for Platform {
     async fn new(position: Point) -> Result<Self> {
         let json = browser::fetch_json("tiles.json").await?;
         let sprite_sheet: SpriteSheet = json.into_serde()?;
-
         let image = image::load_image("tiles.png").await?;
+        let sprite = Sprite::new(sprite_sheet, image);
 
-        Ok(Self {
-            sprite_sheet,
-            image,
-            position,
-        })
+        Ok(Self { sprite, position })
     }
 
     fn bounding_box(&self) -> BoundingBox {
         const X_OFFSET: i16 = 60;
         const END_HEIGHT: i16 = 54;
 
-        let sprite = self
-            .sprite_sheet
-            .frames
-            .get("13.png")
-            .expect("Error: Cell not found");
+        let sprite = self.sprite.cell("13.png").expect("Error: Cell not found");
 
         let raw_rect = sprite.to_rect_on_canvas(
             self.position.x,
@@ -77,13 +71,12 @@ impl GameObject for Platform {
 
     fn draw(&self, renderer: &Renderer) -> Result<()> {
         let sprite = self
-            .sprite_sheet
-            .frames
-            .get("13.png")
+            .sprite
+            .cell("13.png")
             .expect("Error: 13.png not found in sprite sheet");
 
-        renderer.draw_image(
-            &self.image,
+        self.sprite.draw(
+            &renderer,
             &Rect::new_from_x_y(sprite.x(), sprite.y(), sprite.width() * 3, sprite.height()),
             &sprite.to_rect_on_canvas(
                 self.position.x,

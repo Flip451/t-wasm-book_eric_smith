@@ -1,15 +1,14 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use gloo_utils::format::JsValueSerdeExt;
-use web_sys::HtmlImageElement;
 
 use crate::browser;
+use crate::engine::renderer::sprite::{Sprite, SpriteSheet, Cell};
 use crate::engine::renderer::{image, Point, Rect, Renderer};
 
 use self::red_hat_boy_states::*;
 use super::bounding_box::BoundingBox;
 use super::objects::GameObject;
-use super::sprite::{Cell, SpriteSheet};
 
 // 座標系関連
 pub const STARTING_POINT: i16 = -20;
@@ -17,8 +16,7 @@ pub const FLOOR: i16 = 479;
 
 pub struct RedHatBoy {
     state_machine: RedHatBoyStateMachine,
-    sprite_sheet: SpriteSheet,
-    image: HtmlImageElement,
+    sprite: Sprite,
 }
 
 #[async_trait(?Send)]
@@ -35,10 +33,11 @@ impl GameObject for RedHatBoy {
 
         let image = image::load_image("rhb.png").await?;
 
+        let sprite = Sprite::new(sprite_sheet, image);
+
         Ok(Self {
             state_machine: RedHatBoyStateMachine::Idle(RedHatBoyState::<Idle>::new(position)),
-            sprite_sheet,
-            image,
+            sprite,
         })
     }
 
@@ -70,8 +69,8 @@ impl GameObject for RedHatBoy {
         let sprite = self.current_sprite();
 
         // キャンバスに指定の画像を描画
-        renderer.draw_image(
-            &self.image,
+        self.sprite.draw(
+            &renderer,
             &&Rect::new_from_x_y(sprite.x(), sprite.y(), sprite.width(), sprite.height()),
             &sprite.to_rect_on_canvas(
                 self.state_machine.context().position.x,
@@ -102,10 +101,7 @@ impl RedHatBoy {
         let frame_name = self.frame_name();
 
         // シートの中から指定の画像（Run (*).png）の位置を取得
-        self.sprite_sheet
-            .frames
-            .get(&frame_name)
-            .expect("Cell not found")
+        self.sprite.cell(&frame_name).expect("Cell not found")
     }
 
     pub fn is_falling(&self) -> bool {

@@ -35,10 +35,10 @@ impl GameObject for Stone {
     }
 
     fn draw(&self, renderer: &Renderer) -> Result<()> {
-        self.image.draw(renderer);
+        self.image.draw(renderer)?;
 
         #[cfg(feature = "collision_debug")]
-        self.bounding_box().draw(renderer);
+        self.bounding_box().draw(renderer)?;
 
         Ok(())
     }

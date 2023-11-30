@@ -17,7 +17,6 @@ mod background;
 mod bounding_box;
 mod objects;
 mod rhb;
-mod sprite;
 
 use objects::stone::Stone;
 
