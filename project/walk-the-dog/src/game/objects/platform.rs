@@ -1,5 +1,6 @@
+use std::rc::Rc;
+
 use anyhow::Result;
-use async_trait::async_trait;
 use gloo_utils::format::JsValueSerdeExt;
 
 use crate::{
@@ -15,21 +16,26 @@ use crate::{
 use super::{GameObject, Obstacle};
 
 pub struct Platform {
-    sprite: Sprite,
+    sprite: Rc<Sprite>,
     position: Point,
 }
 
-#[async_trait(?Send)]
-impl GameObject for Platform {
-    async fn new(position: Point) -> Result<Self> {
+impl Platform {
+    pub fn new(sprite: Rc<Sprite>, position: Point) -> Self {
+        Self { sprite, position }
+    }
+
+    pub async fn load_sprite() -> Result<Rc<Sprite>> {
         let json = browser::fetch_json("tiles.json").await?;
         let sprite_sheet: SpriteSheet = json.into_serde()?;
         let image = image::load_image("tiles.png").await?;
-        let sprite = Sprite::new(sprite_sheet, image);
+        let sprite = Rc::new(Sprite::new(sprite_sheet, image));
 
-        Ok(Self { sprite, position })
+        Ok(sprite)
     }
+}
 
+impl GameObject for Platform {
     fn bounding_box(&self) -> BoundingBox {
         const X_OFFSET: i16 = 60;
         const END_HEIGHT: i16 = 54;

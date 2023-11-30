@@ -1,9 +1,8 @@
 use anyhow::Result;
-use async_trait::async_trait;
 use gloo_utils::format::JsValueSerdeExt;
 
 use crate::browser;
-use crate::engine::renderer::sprite::{Sprite, SpriteSheet, Cell};
+use crate::engine::renderer::sprite::{Cell, Sprite, SpriteSheet};
 use crate::engine::renderer::{image, Point, Rect, Renderer};
 
 use self::red_hat_boy_states::*;
@@ -19,9 +18,15 @@ pub struct RedHatBoy {
     sprite: Sprite,
 }
 
-#[async_trait(?Send)]
-impl GameObject for RedHatBoy {
-    async fn new(position: Point) -> Result<Self> {
+impl RedHatBoy {
+    pub fn new(sprite: Sprite, position: Point) -> Self {
+        Self {
+            state_machine: RedHatBoyStateMachine::Idle(RedHatBoyState::<Idle>::new(position)),
+            sprite,
+        }
+    }
+
+    pub async fn load_sprite() -> Result<Sprite> {
         let json = browser::fetch_json("rhb.json").await?;
 
         // json を Sheet 型に変換
@@ -35,12 +40,11 @@ impl GameObject for RedHatBoy {
 
         let sprite = Sprite::new(sprite_sheet, image);
 
-        Ok(Self {
-            state_machine: RedHatBoyStateMachine::Idle(RedHatBoyState::<Idle>::new(position)),
-            sprite,
-        })
+        Ok(sprite)
     }
+}
 
+impl GameObject for RedHatBoy {
     fn bounding_box(&self) -> BoundingBox {
         const X_OFFSET: i16 = 18;
         const Y_OFFSET: i16 = 14;

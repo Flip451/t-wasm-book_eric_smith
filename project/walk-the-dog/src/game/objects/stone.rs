@@ -1,5 +1,5 @@
 use anyhow::Result;
-use async_trait::async_trait;
+use web_sys::HtmlImageElement;
 
 use crate::{
     engine::renderer::{
@@ -15,14 +15,19 @@ pub struct Stone {
     image: Image,
 }
 
-#[async_trait(?Send)]
-impl GameObject for Stone {
-    async fn new(position: Point) -> Result<Self> {
-        let image = image::load_image("Stone.png").await?;
-        let image = Image::new(image, position);
-        Ok(Self { image })
+impl Stone {
+    pub fn new(image: HtmlImageElement, position: Point) -> Self {
+        Self {
+            image: Image::new(image, position),
+        }
     }
 
+    pub async fn load_image() -> Result<HtmlImageElement> {
+        image::load_image("Stone.png").await
+    }
+}
+
+impl GameObject for Stone {
     fn bounding_box(&self) -> BoundingBox {
         let bounding_box = Rect::new(
             self.image.position().clone(),

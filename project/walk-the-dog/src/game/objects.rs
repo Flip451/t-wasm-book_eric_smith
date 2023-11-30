@@ -1,18 +1,13 @@
-pub mod stone;
 pub mod platform;
+pub mod stone;
 
 use anyhow::Result;
-use async_trait::async_trait;
 
-use crate::engine::renderer::{Renderer, Point};
+use crate::engine::renderer::Renderer;
 
 use super::{bounding_box::BoundingBox, rhb::RedHatBoy};
 
-#[async_trait(?Send)]
 pub trait GameObject {
-    async fn new(position: Point) -> Result<Self>
-    where
-        Self: Sized;
     fn bounding_box(&self) -> BoundingBox;
     fn draw(&self, renderer: &Renderer) -> Result<()>;
 }

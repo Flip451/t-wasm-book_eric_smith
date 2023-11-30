@@ -58,26 +58,37 @@ impl Game for WalkTheDog {
     async fn initialize(&self) -> Result<Box<dyn Game>> {
         match self {
             Self::Loading => {
-                let rhb = RedHatBoy::new(Point {
-                    x: STARTING_POINT,
-                    y: FLOOR,
-                })
-                .await?;
+                let rhb_sprite = RedHatBoy::load_sprite().await?;
+                let rhb = RedHatBoy::new(
+                    rhb_sprite,
+                    Point {
+                        x: STARTING_POINT,
+                        y: FLOOR,
+                    },
+                );
 
                 let background = Background::new().await?;
 
                 let mut obstacles = Vec::<Box<dyn Obstacle>>::new();
-                let stone = Stone::new(Point {
-                    x: FIRST_STONE_X,
-                    y: FIRST_STONE_Y,
-                }).await?;
+
+                let stone_image = Stone::load_image().await?;
+                let stone = Stone::new(
+                    stone_image,
+                    Point {
+                        x: FIRST_STONE_X,
+                        y: FIRST_STONE_Y,
+                    },
+                );
                 obstacles.push(Box::new(stone));
 
-                let platform = Platform::new(Point {
-                    x: FIRST_PLATFORM,
-                    y: LOW_PLATFORM,
-                })
-                .await?;
+                let platform_sprite = Platform::load_sprite().await?;
+                let platform = Platform::new(
+                    platform_sprite,
+                    Point {
+                        x: FIRST_PLATFORM,
+                        y: LOW_PLATFORM,
+                    },
+                );
                 obstacles.push(Box::new(platform));
 
                 Ok(Box::new(WalkTheDog::Loaded(Walk {
@@ -106,7 +117,7 @@ impl Game for WalkTheDog {
                 background.update(velocity);
 
                 // 画面外に出た障害物を削除する
-                obstacles.retain(|obstacle| {obstacle.bounding_box().right() > 0});
+                obstacles.retain(|obstacle| obstacle.bounding_box().right() > 0);
 
                 for obstacle in obstacles {
                     obstacle.update_position(velocity);
@@ -144,9 +155,9 @@ impl Game for WalkTheDog {
 
                 background.draw(renderer).expect("Error drawing background");
                 rhb.draw(renderer).expect("Error drawing red hat boy");
-                obstacles.iter().for_each(|obstacle| {
-                    obstacle.draw(renderer).expect("Error drawing obstacle")
-                });
+                obstacles
+                    .iter()
+                    .for_each(|obstacle| obstacle.draw(renderer).expect("Error drawing obstacle"));
             }
         }
     }
