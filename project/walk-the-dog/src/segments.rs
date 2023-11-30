@@ -12,8 +12,8 @@ use crate::{
 
 // stone の y 座標
 const STONE_ON_GROUND: i16 = 545;
-const STONE_ON_HIGH_PLATFORM: i16 = 411;
 const STONE_ON_LOW_PLATFORM: i16 = 366;
+const STONE_ON_HIGH_PLATFORM: i16 = 321;
 
 // platform の y 座標
 const LOW_PLATFORM: i16 = 420;
@@ -25,6 +25,14 @@ const FLOATING_PLATFORM_BOUNDING_BOX: [Rect; 3] = [
     Rect::new_from_x_y(60, 0, 384 - (60 * 2), 93),
     Rect::new_from_x_y(384 - 60, 0, 60, 54),
 ];
+
+pub fn rightmost(obstacle_list: &Vec<Box<dyn Obstacle>>) -> i16 {
+    obstacle_list
+        .iter()
+        .map(|obstacle| obstacle.bounding_box().right())
+        .max()
+        .unwrap_or(0)
+}
 
 pub fn create_floating_platform(sprite: Rc<Sprite>, position: Point) -> Platform {
     Platform::new(
@@ -64,6 +72,32 @@ pub fn two_stone_and_low_platform(
             Point {
                 x: offset_x + FIRST_PLATFORM,
                 y: LOW_PLATFORM,
+            },
+        )),
+    ]
+}
+
+pub fn stone_and_high_platform(
+    stone_image: HtmlImageElement,
+    sprite: Rc<Sprite>,
+    offset_x: i16,
+) -> Vec<Box<dyn Obstacle>> {
+    const STONE_X: i16 = 330;
+    const PLATFORM_X: i16 = 300;
+
+    vec![
+        Box::new(Stone::new(
+            stone_image,
+            Point {
+                x: offset_x + STONE_X,
+                y: STONE_ON_HIGH_PLATFORM,
+            },
+        )),
+        Box::new(create_floating_platform(
+            sprite,
+            Point {
+                x: offset_x + PLATFORM_X,
+                y: HIGH_PLATFORM,
             },
         )),
     ]
