@@ -59,21 +59,20 @@ impl GameObject for Platform {
     }
 
     fn draw(&self, renderer: &Renderer) -> Result<()> {
-        let sprite = self
-            .sprite
-            .cell("13.png")
-            .expect("Error: 13.png not found in sprite sheet");
-
-        self.sprite.draw(
-            &renderer,
-            &Rect::new_from_x_y(sprite.x(), sprite.y(), sprite.width() * 3, sprite.height()),
-            &sprite.to_rect_on_canvas(
-                self.position.x,
-                self.position.y,
-                sprite.width() * 3,
-                sprite.height(),
-            ),
-        )?;
+        let mut offset = 0;
+        for cell in &self.sprite_cells {
+            self.sprite.draw(
+                &renderer,
+                &Rect::new_from_x_y(cell.x(), cell.y(), cell.width(), cell.height()),
+                &cell.to_rect_on_canvas(
+                    self.position.x + offset,
+                    self.position.y,
+                    cell.width(),
+                    cell.height(),
+                ),
+            )?;
+            offset += cell.width();
+        }
 
         // キャンバスに bounding box を描画
         #[cfg(feature = "collision_debug")]
