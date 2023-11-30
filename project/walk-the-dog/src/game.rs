@@ -1,9 +1,11 @@
+use std::rc::Rc;
+
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 
 use crate::engine::{
     key_state::KeyState,
-    renderer::{Point, Rect, Renderer},
+    renderer::{sprite::Sprite, Point, Rect, Renderer},
     Game,
 };
 
@@ -39,6 +41,7 @@ pub struct Walk {
     rhb: RedHatBoy,
     background: Background,
     obstacles: Vec<Box<dyn Obstacle>>,
+    obstacle_sheet: Rc<Sprite>,
 }
 
 impl Walk {
@@ -83,7 +86,7 @@ impl Game for WalkTheDog {
 
                 let platform_sprite = Platform::load_sprite().await?;
                 let platform = Platform::new(
-                    platform_sprite,
+                    Rc::clone(&platform_sprite),
                     Point {
                         x: FIRST_PLATFORM,
                         y: LOW_PLATFORM,
@@ -95,6 +98,7 @@ impl Game for WalkTheDog {
                     rhb,
                     background,
                     obstacles,
+                    obstacle_sheet: platform_sprite,
                 })))
             }
             Self::Loaded(_) => Err(anyhow!("Error: Game is already initialized")),
@@ -111,6 +115,7 @@ impl Game for WalkTheDog {
                     rhb,
                     background,
                     obstacles,
+                    obstacle_sheet: _,
                 } = walk;
                 rhb.update();
 
@@ -150,6 +155,7 @@ impl Game for WalkTheDog {
                 rhb,
                 background,
                 obstacles,
+                obstacle_sheet: _,
             }) => {
                 renderer.clear(&Rect::new_from_x_y(0, 0, WIDTH, HEIGHT));
 
