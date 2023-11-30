@@ -63,9 +63,7 @@ impl GameObject for RedHatBoy {
         raw_rect.w += WIDTH_OFFSET;
         raw_rect.h += HEIGHT_OFFSET;
 
-        let mut bounding_boxes = BoundingBox::new();
-        bounding_boxes.add(raw_rect);
-        bounding_boxes
+        BoundingBox::new(vec![raw_rect])
     }
 
     fn draw(&self, renderer: &Renderer) -> Result<()> {

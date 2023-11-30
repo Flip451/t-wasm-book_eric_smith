@@ -7,7 +7,7 @@ use crate::{
     browser,
     engine::renderer::{
         image,
-        sprite::{Sprite, SpriteSheet},
+        sprite::{Cell, Sprite, SpriteSheet},
         Point, Rect, Renderer,
     },
     game::bounding_box::BoundingBox,
@@ -18,11 +18,29 @@ use super::{GameObject, Obstacle};
 pub struct Platform {
     sprite: Rc<Sprite>,
     position: Point,
+    sprite_cells: Vec<Cell>,
+    bounding_box: BoundingBox,
 }
 
 impl Platform {
-    pub fn new(sprite: Rc<Sprite>, position: Point) -> Self {
-        Self { sprite, position }
+    pub fn new(
+        sprite: Rc<Sprite>,
+        position: Point,
+        sprite_names: &[&str],
+        mut bounding_box: BoundingBox,
+    ) -> Self {
+        let sprite_cells = sprite_names
+            .iter()
+            .map(|name| sprite.cell(name).cloned().expect("Error: Cell not found"))
+            .collect();
+        bounding_box.move_by(position);
+
+        Self {
+            sprite,
+            position,
+            sprite_cells,
+            bounding_box,
+        }
     }
 
     pub async fn load_sprite() -> Result<Rc<Sprite>> {
@@ -37,42 +55,7 @@ impl Platform {
 
 impl GameObject for Platform {
     fn bounding_box(&self) -> BoundingBox {
-        const X_OFFSET: i16 = 60;
-        const END_HEIGHT: i16 = 54;
-
-        let sprite = self.sprite.cell("13.png").expect("Error: Cell not found");
-
-        let raw_rect = sprite.to_rect_on_canvas(
-            self.position.x,
-            self.position.y,
-            sprite.width() * 3,
-            sprite.height(),
-        );
-
-        let mut bounding_box = BoundingBox::new();
-
-        bounding_box.add(Rect::new_from_x_y(
-            raw_rect.x(),
-            raw_rect.y(),
-            X_OFFSET,
-            END_HEIGHT,
-        ));
-
-        bounding_box.add(Rect::new_from_x_y(
-            raw_rect.x() + X_OFFSET,
-            raw_rect.y(),
-            raw_rect.w - X_OFFSET * 2,
-            raw_rect.h,
-        ));
-
-        bounding_box.add(Rect::new_from_x_y(
-            raw_rect.x() + raw_rect.w - X_OFFSET,
-            raw_rect.y(),
-            X_OFFSET,
-            END_HEIGHT,
-        ));
-
-        bounding_box
+        self.bounding_box.clone()
     }
 
     fn draw(&self, renderer: &Renderer) -> Result<()> {
@@ -103,6 +86,7 @@ impl GameObject for Platform {
 impl Obstacle for Platform {
     fn update_position(&mut self, velocity: i16) {
         self.position.x += velocity;
+        self.bounding_box.move_by(Point { x: velocity, y: 0 });
     }
 
     fn check_intersection(&self, rhb: &mut crate::game::rhb::RedHatBoy) {

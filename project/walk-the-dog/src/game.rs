@@ -11,6 +11,7 @@ use crate::engine::{
 
 use self::{
     background::Background,
+    bounding_box::BoundingBox,
     objects::{platform::Platform, GameObject, Obstacle},
     rhb::{RedHatBoy, FLOOR, STARTING_POINT},
 };
@@ -91,6 +92,12 @@ impl Game for WalkTheDog {
                         x: FIRST_PLATFORM,
                         y: LOW_PLATFORM,
                     },
+                    &["13.png", "14.png", "15.png"],
+                    BoundingBox::new(vec![
+                        Rect::new_from_x_y(0, 0, 60, 54),
+                        Rect::new_from_x_y(60, 0, 384 - (60 * 2), 93),
+                        Rect::new_from_x_y(384 - 60, 0, 60, 54),
+                    ]),
                 );
                 obstacles.push(Box::new(platform));
 

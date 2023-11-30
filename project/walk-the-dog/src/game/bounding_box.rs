@@ -1,14 +1,15 @@
 use anyhow::Result;
-use crate::engine::renderer::{Rect, Renderer};
+use crate::engine::renderer::{Rect, Renderer, Point};
 
+#[derive(Clone)]
 pub struct BoundingBox {
     boxes: Vec<Rect>
 }
 
 impl BoundingBox {
-    pub fn new() -> Self {
+    pub fn new(rects: Vec<Rect>) -> Self {
         Self {
-            boxes: Vec::new()
+            boxes: rects
         }
     }
 
@@ -37,5 +38,11 @@ impl BoundingBox {
 
     pub fn right(&self) -> i16 {
         self.boxes.iter().map(|rect| rect.right()).max().unwrap_or(0)
+    }
+
+    pub fn move_by(&mut self, position: Point) {
+        self.boxes.iter_mut().for_each(|rect| {
+            rect.move_by(position);
+        });
     }
 }

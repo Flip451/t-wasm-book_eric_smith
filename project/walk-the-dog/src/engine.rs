@@ -206,12 +206,25 @@ pub mod renderer {
         pub fn bottom(&self) -> i16 {
             self.y() + self.h
         }
+
+        pub fn move_by(&mut self, diff: Point) {
+            self.position.move_by(diff)
+        }
     }
 
     #[derive(Clone, Copy)]
     pub struct Point {
         pub x: i16,
         pub y: i16,
+    }
+
+    impl Point {
+        pub fn move_by(&mut self, rhs: Self) {
+            *self = Self {
+                x: self.x + rhs.x,
+                y: self.y + rhs.y,
+            }
+        }
     }
 
     pub mod image {
@@ -312,7 +325,7 @@ pub mod renderer {
 
         use super::Renderer;
 
-        #[derive(Deserialize)]
+        #[derive(Deserialize, Clone)]
         struct SheetRect {
             x: i16,
             y: i16,
@@ -320,7 +333,7 @@ pub mod renderer {
             h: i16,
         }
 
-        #[derive(Deserialize)]
+        #[derive(Deserialize, Clone)]
         #[serde(rename_all = "camelCase")]
         pub struct Cell {
             frame: SheetRect,

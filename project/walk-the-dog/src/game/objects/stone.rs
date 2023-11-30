@@ -34,9 +34,7 @@ impl GameObject for Stone {
             self.image.width(),
             self.image.height(),
         );
-        let mut bounding_boxes = BoundingBox::new();
-        bounding_boxes.add(bounding_box);
-        bounding_boxes
+        BoundingBox::new(vec![bounding_box])
     }
 
     fn draw(&self, renderer: &Renderer) -> Result<()> {
