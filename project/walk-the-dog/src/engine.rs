@@ -104,15 +104,23 @@ pub mod renderer {
         }
 
         pub fn clear(&self, rect: &Rect) {
-            self.context
-                .clear_rect(rect.x.into(), rect.y.into(), rect.w.into(), rect.h.into());
+            self.context.clear_rect(
+                rect.x().into(),
+                rect.y().into(),
+                rect.w.into(),
+                rect.h.into(),
+            );
         }
 
         pub fn draw_rect(&self, rect: &Rect) {
             self.context.begin_path();
             self.context.set_stroke_style(&"red".into());
-            self.context
-                .rect(rect.x.into(), rect.y.into(), rect.w.into(), rect.h.into());
+            self.context.rect(
+                rect.x().into(),
+                rect.y().into(),
+                rect.w.into(),
+                rect.h.into(),
+            );
             self.context.stroke();
         }
 
@@ -125,12 +133,12 @@ pub mod renderer {
             self.context
                 .draw_image_with_html_image_element_and_sw_and_sh_and_dx_and_dy_and_dw_and_dh(
                     &image,
-                    frame.x as f64,
-                    frame.y as f64,
+                    frame.x() as f64,
+                    frame.y() as f64,
                     frame.w as f64,
                     frame.h as f64,
-                    destination.x as f64,
-                    destination.y as f64,
+                    destination.x() as f64,
+                    destination.y() as f64,
                     destination.w as f64,
                     destination.h as f64,
                 )
@@ -150,25 +158,73 @@ pub mod renderer {
 
     #[derive(Clone)]
     pub struct Rect {
-        pub x: f32,
-        pub y: f32,
-        pub w: f32,
-        pub h: f32,
+        position: Point,
+        pub w: i16,
+        pub h: i16,
     }
 
     impl Rect {
+        pub fn new(position: Point, width: i16, height: i16) -> Self {
+            Self {
+                position,
+                w: width,
+                h: height,
+            }
+        }
+
+        pub fn new_from_x_y(x: i16, y: i16, width: i16, height: i16) -> Self {
+            Self::new(Point { x, y }, width, height)
+        }
+
         pub fn intersects(&self, other: &Rect) -> bool {
-            self.x < other.x + other.w
-                && self.x + self.w > other.x
-                && self.y < other.y + other.h
-                && self.y + self.h > other.y
+            self.x() < other.right()
+                && self.right() > other.x()
+                && self.y() < other.bottom()
+                && self.bottom() > other.y()
+        }
+
+        pub fn x(&self) -> i16 {
+            self.position.x
+        }
+
+        pub fn y(&self) -> i16 {
+            self.position.y
+        }
+
+        pub fn set_x(&mut self, x: i16) {
+            self.position.x = x;
+        }
+
+        pub fn set_y(&mut self, y: i16) {
+            self.position.y = y;
+        }
+
+        pub fn right(&self) -> i16 {
+            self.x() + self.w
+        }
+
+        pub fn bottom(&self) -> i16 {
+            self.y() + self.h
+        }
+
+        pub fn move_by(&mut self, diff: Point) {
+            self.position.move_by(diff)
         }
     }
 
     #[derive(Clone, Copy)]
     pub struct Point {
-        pub x: f32,
-        pub y: f32,
+        pub x: i16,
+        pub y: i16,
+    }
+
+    impl Point {
+        pub fn move_by(&mut self, rhs: Self) {
+            *self = Self {
+                x: self.x + rhs.x,
+                y: self.y + rhs.y,
+            }
+        }
     }
 
     pub mod image {
@@ -237,24 +293,109 @@ pub mod renderer {
                 &self.position
             }
 
-            pub fn width(&self) -> f32 {
-                self.element.width() as f32
+            pub fn width(&self) -> i16 {
+                self.element.width() as i16
             }
 
-            pub fn height(&self) -> f32 {
-                self.element.height() as f32
+            pub fn height(&self) -> i16 {
+                self.element.height() as i16
             }
 
-            pub fn move_horizontally(&mut self, velocity: f32) {
+            pub fn move_horizontally(&mut self, velocity: i16) {
                 self.position.x += velocity;
             }
 
-            pub fn set_x(&mut self, x: f32) {
+            pub fn set_x(&mut self, x: i16) {
                 self.position.x = x;
             }
 
-            pub(crate) fn right(&self) -> f32 {
+            pub(crate) fn right(&self) -> i16 {
                 self.position.x + self.width()
+            }
+        }
+    }
+
+    pub mod sprite {
+        use anyhow::Result;
+        use serde::Deserialize;
+        use std::collections::HashMap;
+        use web_sys::HtmlImageElement;
+
+        use crate::engine::renderer::Rect;
+
+        use super::Renderer;
+
+        #[derive(Deserialize, Clone)]
+        struct SheetRect {
+            x: i16,
+            y: i16,
+            w: i16,
+            h: i16,
+        }
+
+        #[derive(Deserialize, Clone)]
+        #[serde(rename_all = "camelCase")]
+        pub struct Cell {
+            frame: SheetRect,
+            sprite_source_size: SheetRect,
+        }
+
+        impl Cell {
+            pub fn to_rect_on_canvas(&self, x: i16, y: i16, w: i16, h: i16) -> Rect {
+                Rect::new_from_x_y(
+                    x + self.sprite_source_size.x,
+                    y + self.sprite_source_size.y,
+                    w,
+                    h,
+                )
+            }
+
+            pub fn x(&self) -> i16 {
+                self.frame.x
+            }
+
+            pub fn y(&self) -> i16 {
+                self.frame.y
+            }
+
+            pub fn width(&self) -> i16 {
+                self.frame.w
+            }
+
+            pub fn height(&self) -> i16 {
+                self.frame.h
+            }
+        }
+
+        #[derive(Deserialize)]
+        pub struct SpriteSheet {
+            pub frames: HashMap<String, Cell>,
+        }
+
+        pub struct Sprite {
+            sprite_sheet: SpriteSheet,
+            image: HtmlImageElement,
+        }
+
+        impl Sprite {
+            pub fn new(sprite_sheet: SpriteSheet, image: HtmlImageElement) -> Self {
+                Self {
+                    sprite_sheet,
+                    image,
+                }
+            }
+
+            pub fn cell(&self, name: &str) -> Option<&Cell> {
+                self.sprite_sheet.frames.get(name)
+            }
+
+            pub fn draw(
+                &self,
+                renderer: &Renderer,
+                source: &Rect,
+                destination: &Rect,
+            ) -> Result<()> {
+                renderer.draw_image(&self.image, source, destination)
             }
         }
     }

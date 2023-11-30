@@ -12,12 +12,12 @@ pub struct Background {
 impl Background {
     pub async fn new() -> Result<Self> {
         let image = image::load_image("BG.png").await?;
-        let image1 = Image::new(image.clone(), Point { x: 0., y: 0. });
+        let image1 = Image::new(image.clone(), Point { x: 0, y: 0 });
         let image2 = Image::new(
             image,
             Point {
                 x: image1.width(),
-                y: 0.,
+                y: 0,
             },
         );
         Ok(Self {
@@ -34,17 +34,24 @@ impl Background {
         Ok(())
     }
 
-    pub fn update(&mut self, velocity: f32) {
+    pub fn update(&mut self, velocity: i16) {
         self.images.iter_mut().for_each(|image| {
             image.move_horizontally(velocity);
         });
 
+        // 画像が画面の左端から外に出たら、右端に移動する
         let len = self.images.len();
-        let right_position_list = self.images.iter().map(|image| image.right()).collect::<Vec<_>>();
+        let right_position_list = self
+            .images
+            .iter()
+            .map(|image| image.right())
+            .collect::<Vec<_>>();
 
-        let image_out_of_game = self.images.iter_mut().enumerate().find(|(_, image)| {
-            image.right() < 0.
-        });
+        let image_out_of_game = self
+            .images
+            .iter_mut()
+            .enumerate()
+            .find(|(_, image)| image.right() < 0);
 
         if let Some((index, image)) = image_out_of_game {
             let new_x = right_position_list[(index + len - 1) % len];

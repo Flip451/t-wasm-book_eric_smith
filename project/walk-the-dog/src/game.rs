@@ -1,14 +1,17 @@
+use std::rc::Rc;
+
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 
 use crate::engine::{
     key_state::KeyState,
-    renderer::{Point, Rect, Renderer},
+    renderer::{sprite::Sprite, Point, Rect, Renderer},
     Game,
 };
 
 use self::{
     background::Background,
+    bounding_box::BoundingBox,
     objects::{platform::Platform, GameObject, Obstacle},
     rhb::{RedHatBoy, FLOOR, STARTING_POINT},
 };
@@ -17,19 +20,18 @@ mod background;
 mod bounding_box;
 mod objects;
 mod rhb;
-mod sprite;
 
 use objects::stone::Stone;
 
-const WIDTH: f32 = 600.;
-const HEIGHT: f32 = 600.;
+const WIDTH: i16 = 600;
+const HEIGHT: i16 = 600;
 
-const LOW_PLATFORM: f32 = 420.;
-const HIGH_PLATFORM: f32 = 375.;
-const FIRST_PLATFORM: f32 = 200.;
+const LOW_PLATFORM: i16 = 420;
+const HIGH_PLATFORM: i16 = 375;
+const FIRST_PLATFORM: i16 = 300;
 
-const FIRST_STONE_X: f32 = 350.;
-const FIRST_STONE_Y: f32 = 366.;
+const FIRST_STONE_X: i16 = 450;
+const FIRST_STONE_Y: i16 = 366;
 
 pub enum WalkTheDog {
     Loading,
@@ -39,13 +41,13 @@ pub enum WalkTheDog {
 pub struct Walk {
     rhb: RedHatBoy,
     background: Background,
-    stone: Stone,
-    platform: Platform,
+    obstacles: Vec<Box<dyn Obstacle>>,
+    obstacle_sheet: Rc<Sprite>,
 }
 
 impl Walk {
-    fn velocity(&self) -> f32 {
-        - self.rhb.walking_speed()
+    fn velocity(&self) -> i16 {
+        -self.rhb.walking_speed()
     }
 }
 
@@ -60,27 +62,50 @@ impl Game for WalkTheDog {
     async fn initialize(&self) -> Result<Box<dyn Game>> {
         match self {
             Self::Loading => {
-                let rhb = RedHatBoy::new(Point {
-                    x: STARTING_POINT,
-                    y: FLOOR,
-                })
-                .await?;
-                let stone = Stone::new(Point {
-                    x: FIRST_STONE_X,
-                    y: FIRST_STONE_Y,
-                })
-                .await?;
+                let rhb_sprite = RedHatBoy::load_sprite().await?;
+                let rhb = RedHatBoy::new(
+                    rhb_sprite,
+                    Point {
+                        x: STARTING_POINT,
+                        y: FLOOR,
+                    },
+                );
+
                 let background = Background::new().await?;
-                let platform = Platform::new(Point {
-                    x: FIRST_PLATFORM,
-                    y: LOW_PLATFORM,
-                })
-                .await?;
+
+                let mut obstacles = Vec::<Box<dyn Obstacle>>::new();
+
+                let stone_image = Stone::load_image().await?;
+                let stone = Stone::new(
+                    stone_image,
+                    Point {
+                        x: FIRST_STONE_X,
+                        y: FIRST_STONE_Y,
+                    },
+                );
+                obstacles.push(Box::new(stone));
+
+                let platform_sprite = Platform::load_sprite().await?;
+                let platform = Platform::new(
+                    Rc::clone(&platform_sprite),
+                    Point {
+                        x: FIRST_PLATFORM,
+                        y: LOW_PLATFORM,
+                    },
+                    &["13.png", "14.png", "15.png"],
+                    BoundingBox::new(vec![
+                        Rect::new_from_x_y(0, 0, 60, 54),
+                        Rect::new_from_x_y(60, 0, 384 - (60 * 2), 93),
+                        Rect::new_from_x_y(384 - 60, 0, 60, 54),
+                    ]),
+                );
+                obstacles.push(Box::new(platform));
+
                 Ok(Box::new(WalkTheDog::Loaded(Walk {
                     rhb,
                     background,
-                    stone,
-                    platform,
+                    obstacles,
+                    obstacle_sheet: platform_sprite,
                 })))
             }
             Self::Loaded(_) => Err(anyhow!("Error: Game is already initialized")),
@@ -96,31 +121,19 @@ impl Game for WalkTheDog {
                 let Walk {
                     rhb,
                     background,
-                    stone,
-                    platform,
+                    obstacles,
+                    obstacle_sheet: _,
                 } = walk;
                 rhb.update();
 
-                platform.update(velocity);
-                stone.update(velocity);
                 background.update(velocity);
 
-                // rhb のbounding box と platform の bounding box が重なっているかどうかを判定
-                if let Some((rhb_rect, platform_rect)) =
-                    rhb.bounding_box().intersects(&platform.bounding_box())
-                {
-                    // rhb が platform より上にいるかどうかを判定
-                    // かつ rhb が落下しているかどうかを判定
-                    if rhb_rect.y < platform_rect.y && rhb.is_falling() {
-                        rhb.land_on(platform_rect.y);
-                    } else {
-                        rhb.knock_out();
-                    }
-                }
+                // 画面外に出た障害物を削除する
+                obstacles.retain(|obstacle| obstacle.bounding_box().right() > 0);
 
-                // rhb のbounding box と stone の bounding box が重なっているかどうかを判定
-                if let Some((_, _)) = rhb.bounding_box().intersects(&stone.bounding_box()) {
-                    rhb.knock_out();
+                for obstacle in obstacles {
+                    obstacle.update_position(velocity);
+                    obstacle.check_intersection(rhb);
                 }
 
                 if keystate.is_pressed("ArrowRight") {
@@ -148,20 +161,16 @@ impl Game for WalkTheDog {
             WalkTheDog::Loaded(Walk {
                 rhb,
                 background,
-                stone,
-                platform,
+                obstacles,
+                obstacle_sheet: _,
             }) => {
-                renderer.clear(&Rect {
-                    x: 0.,
-                    y: 0.,
-                    w: WIDTH,
-                    h: HEIGHT,
-                });
+                renderer.clear(&Rect::new_from_x_y(0, 0, WIDTH, HEIGHT));
 
                 background.draw(renderer).expect("Error drawing background");
                 rhb.draw(renderer).expect("Error drawing red hat boy");
-                stone.draw(renderer).expect("Error drawing stone");
-                platform.draw(renderer).expect("Error drawing platform");
+                obstacles
+                    .iter()
+                    .for_each(|obstacle| obstacle.draw(renderer).expect("Error drawing obstacle"));
             }
         }
     }

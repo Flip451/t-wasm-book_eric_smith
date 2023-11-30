@@ -1,102 +1,78 @@
+use std::rc::Rc;
+
 use anyhow::Result;
-use async_trait::async_trait;
 use gloo_utils::format::JsValueSerdeExt;
-use web_sys::HtmlImageElement;
 
 use crate::{
     browser,
-    engine::renderer::{image, Point, Rect, Renderer},
-    game::{bounding_box::BoundingBox, sprite::SpriteSheet},
+    engine::renderer::{
+        image,
+        sprite::{Cell, Sprite, SpriteSheet},
+        Point, Rect, Renderer,
+    },
+    game::bounding_box::BoundingBox,
 };
 
 use super::{GameObject, Obstacle};
 
 pub struct Platform {
-    sprite_sheet: SpriteSheet,
-    image: HtmlImageElement,
+    sprite: Rc<Sprite>,
     position: Point,
+    sprite_cells: Vec<Cell>,
+    bounding_box: BoundingBox,
 }
 
-#[async_trait(?Send)]
-impl GameObject for Platform {
-    async fn new(position: Point) -> Result<Self> {
-        let json = browser::fetch_json("tiles.json").await?;
-        let sprite_sheet: SpriteSheet = json.into_serde()?;
+impl Platform {
+    pub fn new(
+        sprite: Rc<Sprite>,
+        position: Point,
+        sprite_names: &[&str],
+        mut bounding_box: BoundingBox,
+    ) -> Self {
+        let sprite_cells = sprite_names
+            .iter()
+            .map(|name| sprite.cell(name).cloned().expect("Error: Cell not found"))
+            .collect();
+        bounding_box.move_by(position);
 
-        let image = image::load_image("tiles.png").await?;
-
-        Ok(Self {
-            sprite_sheet,
-            image,
+        Self {
+            sprite,
             position,
-        })
+            sprite_cells,
+            bounding_box,
+        }
     }
 
+    pub async fn load_sprite() -> Result<Rc<Sprite>> {
+        let json = browser::fetch_json("tiles.json").await?;
+        let sprite_sheet: SpriteSheet = json.into_serde()?;
+        let image = image::load_image("tiles.png").await?;
+        let sprite = Rc::new(Sprite::new(sprite_sheet, image));
+
+        Ok(sprite)
+    }
+}
+
+impl GameObject for Platform {
     fn bounding_box(&self) -> BoundingBox {
-        const X_OFFSET: f32 = 60.;
-        const END_HEIGHT: f32 = 54.;
-
-        let sprite = self
-            .sprite_sheet
-            .frames
-            .get("13.png")
-            .expect("Error: Cell not found");
-
-        let raw_rect = sprite.to_rect_on_canvas(
-            self.position.x,
-            self.position.y,
-            sprite.width() * 3.,
-            sprite.height(),
-        );
-
-        let mut bounding_box = BoundingBox::new();
-
-        bounding_box.add(Rect {
-            x: raw_rect.x,
-            y: raw_rect.y,
-            w: X_OFFSET,
-            h: END_HEIGHT,
-        });
-
-        bounding_box.add(Rect {
-            x: raw_rect.x + X_OFFSET,
-            y: raw_rect.y,
-            w: raw_rect.w - X_OFFSET * 2.,
-            h: raw_rect.h,
-        });
-
-        bounding_box.add(Rect {
-            x: raw_rect.x + raw_rect.w - X_OFFSET,
-            y: raw_rect.y,
-            w: X_OFFSET,
-            h: END_HEIGHT,
-        });
-
-        bounding_box
+        self.bounding_box.clone()
     }
 
     fn draw(&self, renderer: &Renderer) -> Result<()> {
-        let sprite = self
-            .sprite_sheet
-            .frames
-            .get("13.png")
-            .expect("Error: 13.png not found in sprite sheet");
-
-        renderer.draw_image(
-            &self.image,
-            &Rect {
-                x: sprite.x(),
-                y: sprite.y(),
-                w: sprite.width() * 3.,
-                h: sprite.height(),
-            },
-            &sprite.to_rect_on_canvas(
-                self.position.x,
-                self.position.y,
-                sprite.width() * 3.,
-                sprite.height(),
-            ),
-        )?;
+        let mut offset = 0;
+        for cell in &self.sprite_cells {
+            self.sprite.draw(
+                &renderer,
+                &Rect::new_from_x_y(cell.x(), cell.y(), cell.width(), cell.height()),
+                &cell.to_rect_on_canvas(
+                    self.position.x + offset,
+                    self.position.y,
+                    cell.width(),
+                    cell.height(),
+                ),
+            )?;
+            offset += cell.width();
+        }
 
         // キャンバスに bounding box を描画
         #[cfg(feature = "collision_debug")]
@@ -107,7 +83,21 @@ impl GameObject for Platform {
 }
 
 impl Obstacle for Platform {
-    fn update(&mut self, velocity: f32) {
+    fn update_position(&mut self, velocity: i16) {
         self.position.x += velocity;
+        self.bounding_box.move_by(Point { x: velocity, y: 0 });
+    }
+
+    fn check_intersection(&self, rhb: &mut crate::game::rhb::RedHatBoy) {
+        if let Some((rhb_rect, platform_rect)) = rhb.bounding_box().intersects(&self.bounding_box())
+        {
+            // rhb が platform より上にいるかどうかを判定
+            // かつ rhb が落下しているかどうかを判定
+            if rhb_rect.y() < platform_rect.y() && rhb.is_falling() {
+                rhb.land_on(platform_rect.y());
+            } else {
+                rhb.knock_out();
+            }
+        }
     }
 }
